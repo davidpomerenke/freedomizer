@@ -6,7 +6,9 @@
             "ESNext",
             "DOM"
         ],
-        "noEmit": true
+        "noEmit": true,
+        "jsx": "react",
+        "moduleResolution": "node"
     },
     "include": [
         "./src",

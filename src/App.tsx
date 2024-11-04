@@ -17,12 +17,9 @@ import type {
 
 import { Sidebar } from "./Sidebar";
 import { Spinner } from "./Spinner";
-import { testHighlights as _testHighlights } from "./test-highlights";
 
 import "./style/App.css";
 import "../node_modules/react-pdf-highlighter/dist/style.css";
-
-const testHighlights: Record<string, Array<IHighlight>> = _testHighlights;
 
 const getNextId = () => String(Math.random()).slice(2);
 
@@ -52,9 +49,7 @@ const initialUrl = searchParams.get("url") || PRIMARY_PDF_URL;
 
 export function App() {
   const [url, setUrl] = useState(initialUrl);
-  const [highlights, setHighlights] = useState<Array<IHighlight>>(
-    testHighlights[initialUrl] ? [...testHighlights[initialUrl]] : [],
-  );
+  const [highlights, setHighlights] = useState<Array<IHighlight>>( [],);
 
   const resetHighlights = () => {
     setHighlights([]);
@@ -64,7 +59,7 @@ export function App() {
     const newUrl =
       url === PRIMARY_PDF_URL ? SECONDARY_PDF_URL : PRIMARY_PDF_URL;
     setUrl(newUrl);
-    setHighlights(testHighlights[newUrl] ? [...testHighlights[newUrl]] : []);
+    // setHighlights(testHighlights[newUrl] ? [...testHighlights[newUrl]] : []);
   };
 
   const scrollViewerTo = useRef((highlight: IHighlight) => {
@@ -145,6 +140,7 @@ export function App() {
           {(pdfDocument) => (
             <PdfHighlighter
               pdfDocument={pdfDocument}
+              pdfScaleValue="page-width"
               enableAreaSelection={(event) => event.altKey}
               onScrollChange={resetHash}
               scrollRef={(scrollTo) => {
@@ -203,7 +199,7 @@ export function App() {
                       setTip(highlight, (highlight) => popupContent)
                     }
                     onMouseOut={hideTip}
-                    key={index}
+                    children={component}
                   >
                     {component}
                   </Popup>
