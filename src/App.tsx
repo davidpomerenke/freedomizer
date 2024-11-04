@@ -5,8 +5,6 @@ import {
   Highlight,
   PdfHighlighter,
   PdfLoader,
-  Popup,
-  Tip,
 } from "react-pdf-highlighter";
 import type {
   Content,
@@ -30,17 +28,6 @@ const resetHash = () => {
   document.location.hash = "";
 };
 
-const HighlightPopup = ({
-  comment,
-}: {
-  comment: { text: string; emoji: string };
-}) =>
-  comment.text ? (
-    <div className="Highlight__popup">
-      {comment.emoji} {comment.text}
-    </div>
-  ) : null;
-
 export function App() {
   const [url, setUrl] = useState<string | null>(null);
   const [highlights, setHighlights] = useState<Array<IHighlight>>([]);
@@ -52,11 +39,10 @@ export function App() {
 
   const toggleDocument = () => {
     if (uploadedPdfUrl) {
-      setUrl(url === uploadedPdfUrl ? PRIMARY_PDF_URL : uploadedPdfUrl);
+      setUrl(uploadedPdfUrl);
     } else {
-      setUrl(url === PRIMARY_PDF_URL ? SECONDARY_PDF_URL : PRIMARY_PDF_URL);
+      setHighlights([]);
     }
-    setHighlights([]);
   };
 
   const scrollViewerTo = useRef((highlight: IHighlight) => {
@@ -161,20 +147,13 @@ export function App() {
                   scrollViewerTo.current = scrollTo;
                   scrollToHighlightFromHash();
                 }}
-                onSelectionFinished={(
-                  position,
-                  content,
-                  hideTipAndSelection,
-                  transformSelection,
-                ) => (
-                  <Tip
-                    onOpen={transformSelection}
-                    onConfirm={(comment) => {
-                      addHighlight({ content, position, comment });
-                      hideTipAndSelection();
-                    }}
-                  />
-                )}
+                onSelectionFinished={(position, content) => {
+                  addHighlight({
+                    content,
+                    position,
+                    comment: { text: "remove this", emoji: "" }
+                  });
+                }}
                 highlightTransform={(
                   highlight,
                   index,
@@ -186,37 +165,28 @@ export function App() {
                 ) => {
                   const isTextHighlight = !highlight.content?.image;
 
-                  const component = isTextHighlight ? (
-                    <Highlight
-                      isScrolledTo={isScrolledTo}
-                      position={highlight.position}
-                      comment={highlight.comment}
-                    />
+                  return isTextHighlight ? (
+                    <div onClick={() => setHighlights(h => h.filter(hl => hl.id !== highlight.id))}>
+                      <Highlight
+                        isScrolledTo={isScrolledTo}
+                        position={highlight.position}
+                        comment={highlight.comment}
+                      />
+                    </div>
                   ) : (
-                    <AreaHighlight
-                      isScrolledTo={isScrolledTo}
-                      highlight={highlight}
-                      onChange={(boundingRect) => {
-                        updateHighlight(
-                          highlight.id,
-                          { boundingRect: viewportToScaled(boundingRect) },
-                          { image: screenshot(boundingRect) },
-                        );
-                      }}
-                    />
-                  );
-
-                  return (
-                    <Popup
-                      popupContent={<HighlightPopup {...highlight} />}
-                      onMouseOver={(popupContent) =>
-                        setTip(highlight, (highlight) => popupContent)
-                      }
-                      onMouseOut={hideTip}
-                      children={component}
-                    >
-                      {component}
-                    </Popup>
+                    <div onClick={() => setHighlights(h => h.filter(hl => hl.id !== highlight.id))}>
+                      <AreaHighlight
+                        isScrolledTo={isScrolledTo}
+                        highlight={highlight}
+                        onChange={(boundingRect) => {
+                          updateHighlight(
+                            highlight.id,
+                            { boundingRect: viewportToScaled(boundingRect) },
+                            { image: screenshot(boundingRect) },
+                          );
+                        }}
+                      />
+                    </div>
                   );
                 }}
                 highlights={highlights}
