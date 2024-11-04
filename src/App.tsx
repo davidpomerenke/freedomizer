@@ -41,25 +41,22 @@ const HighlightPopup = ({
     </div>
   ) : null;
 
-const PRIMARY_PDF_URL = "https://arxiv.org/pdf/1708.08021";
-const SECONDARY_PDF_URL = "https://arxiv.org/pdf/1604.02480";
-
-const searchParams = new URLSearchParams(document.location.search);
-const initialUrl = searchParams.get("url") || PRIMARY_PDF_URL;
-
 export function App() {
-  const [url, setUrl] = useState(initialUrl);
-  const [highlights, setHighlights] = useState<Array<IHighlight>>( [],);
+  const [url, setUrl] = useState<string | null>(null);
+  const [highlights, setHighlights] = useState<Array<IHighlight>>([]);
+  const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null);
 
   const resetHighlights = () => {
     setHighlights([]);
   };
 
   const toggleDocument = () => {
-    const newUrl =
-      url === PRIMARY_PDF_URL ? SECONDARY_PDF_URL : PRIMARY_PDF_URL;
-    setUrl(newUrl);
-    // setHighlights(testHighlights[newUrl] ? [...testHighlights[newUrl]] : []);
+    if (uploadedPdfUrl) {
+      setUrl(url === uploadedPdfUrl ? PRIMARY_PDF_URL : uploadedPdfUrl);
+    } else {
+      setUrl(url === PRIMARY_PDF_URL ? SECONDARY_PDF_URL : PRIMARY_PDF_URL);
+    }
+    setHighlights([]);
   };
 
   const scrollViewerTo = useRef((highlight: IHighlight) => {
@@ -122,12 +119,28 @@ export function App() {
     );
   };
 
+  const handleFileUpload = (fileUrl: string) => {
+    setUploadedPdfUrl(fileUrl);
+    setUrl(fileUrl);
+    setHighlights([]); // Reset highlights for new document
+  };
+
+  // Clean up object URLs when component unmounts or URL changes
+  useEffect(() => {
+    return () => {
+      if (uploadedPdfUrl) {
+        URL.revokeObjectURL(uploadedPdfUrl);
+      }
+    };
+  }, [uploadedPdfUrl]);
+
   return (
     <div className="App" style={{ display: "flex", height: "100vh" }}>
       <Sidebar
         highlights={highlights}
         resetHighlights={resetHighlights}
         toggleDocument={toggleDocument}
+        onFileUpload={handleFileUpload}
       />
       <div
         style={{
@@ -136,79 +149,96 @@ export function App() {
           position: "relative",
         }}
       >
-        <PdfLoader url={url} beforeLoad={<Spinner />}>
-          {(pdfDocument) => (
-            <PdfHighlighter
-              pdfDocument={pdfDocument}
-              pdfScaleValue="page-width"
-              enableAreaSelection={(event) => event.altKey}
-              onScrollChange={resetHash}
-              scrollRef={(scrollTo) => {
-                scrollViewerTo.current = scrollTo;
-                scrollToHighlightFromHash();
-              }}
-              onSelectionFinished={(
-                position,
-                content,
-                hideTipAndSelection,
-                transformSelection,
-              ) => (
-                <Tip
-                  onOpen={transformSelection}
-                  onConfirm={(comment) => {
-                    addHighlight({ content, position, comment });
-                    hideTipAndSelection();
-                  }}
-                />
-              )}
-              highlightTransform={(
-                highlight,
-                index,
-                setTip,
-                hideTip,
-                viewportToScaled,
-                screenshot,
-                isScrolledTo,
-              ) => {
-                const isTextHighlight = !highlight.content?.image;
-
-                const component = isTextHighlight ? (
-                  <Highlight
-                    isScrolledTo={isScrolledTo}
-                    position={highlight.position}
-                    comment={highlight.comment}
-                  />
-                ) : (
-                  <AreaHighlight
-                    isScrolledTo={isScrolledTo}
-                    highlight={highlight}
-                    onChange={(boundingRect) => {
-                      updateHighlight(
-                        highlight.id,
-                        { boundingRect: viewportToScaled(boundingRect) },
-                        { image: screenshot(boundingRect) },
-                      );
+        {url ? (
+          <PdfLoader url={url} beforeLoad={<Spinner />}>
+            {(pdfDocument) => (
+              <PdfHighlighter
+                pdfDocument={pdfDocument}
+                pdfScaleValue="page-width"
+                enableAreaSelection={(event) => event.altKey}
+                onScrollChange={resetHash}
+                scrollRef={(scrollTo) => {
+                  scrollViewerTo.current = scrollTo;
+                  scrollToHighlightFromHash();
+                }}
+                onSelectionFinished={(
+                  position,
+                  content,
+                  hideTipAndSelection,
+                  transformSelection,
+                ) => (
+                  <Tip
+                    onOpen={transformSelection}
+                    onConfirm={(comment) => {
+                      addHighlight({ content, position, comment });
+                      hideTipAndSelection();
                     }}
                   />
-                );
+                )}
+                highlightTransform={(
+                  highlight,
+                  index,
+                  setTip,
+                  hideTip,
+                  viewportToScaled,
+                  screenshot,
+                  isScrolledTo,
+                ) => {
+                  const isTextHighlight = !highlight.content?.image;
 
-                return (
-                  <Popup
-                    popupContent={<HighlightPopup {...highlight} />}
-                    onMouseOver={(popupContent) =>
-                      setTip(highlight, (highlight) => popupContent)
-                    }
-                    onMouseOut={hideTip}
-                    children={component}
-                  >
-                    {component}
-                  </Popup>
-                );
-              }}
-              highlights={highlights}
-            />
-          )}
-        </PdfLoader>
+                  const component = isTextHighlight ? (
+                    <Highlight
+                      isScrolledTo={isScrolledTo}
+                      position={highlight.position}
+                      comment={highlight.comment}
+                    />
+                  ) : (
+                    <AreaHighlight
+                      isScrolledTo={isScrolledTo}
+                      highlight={highlight}
+                      onChange={(boundingRect) => {
+                        updateHighlight(
+                          highlight.id,
+                          { boundingRect: viewportToScaled(boundingRect) },
+                          { image: screenshot(boundingRect) },
+                        );
+                      }}
+                    />
+                  );
+
+                  return (
+                    <Popup
+                      popupContent={<HighlightPopup {...highlight} />}
+                      onMouseOver={(popupContent) =>
+                        setTip(highlight, (highlight) => popupContent)
+                      }
+                      onMouseOut={hideTip}
+                      children={component}
+                    >
+                      {component}
+                    </Popup>
+                  );
+                }}
+                highlights={highlights}
+              />
+            )}
+          </PdfLoader>
+        ) : (
+          <div
+            style={{
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#333",
+            }}
+          >
+            <div style={{ textAlign: "center" }}>
+              <h2>No PDF loaded</h2>
+              <p>Please upload a PDF using the sidebar</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
