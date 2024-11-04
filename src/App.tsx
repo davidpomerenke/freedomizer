@@ -127,6 +127,7 @@ export function App() {
         resetHighlights={resetHighlights}
         toggleDocument={toggleDocument}
         onFileUpload={handleFileUpload}
+        onDeleteHighlight={(id) => setHighlights(h => h.filter(hl => hl.id !== id))}
       />
       <div
         style={{

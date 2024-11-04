@@ -6,6 +6,7 @@ interface Props {
   resetHighlights: () => void;
   toggleDocument: () => void;
   onFileUpload: (url: string) => void;
+  onDeleteHighlight?: (id: string) => void;
 }
 
 const updateHash = (highlight: IHighlight) => {
@@ -18,6 +19,7 @@ export function Sidebar({
   highlights,
   resetHighlights,
   onFileUpload,
+  onDeleteHighlight,
 }: Props) {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -67,31 +69,51 @@ export function Sidebar({
         <ul className="sidebar__highlights">
           {highlights.map((highlight, index) => (
             <li
-              // biome-ignore lint/suspicious/noArrayIndexKey: This is an example app
               key={index}
               className="sidebar__highlight"
-              onClick={() => {
-                updateHash(highlight);
-              }}
             >
-              <div>
-                <strong>{highlight.comment.text}</strong>
-                {highlight.content.text ? (
-                  <blockquote style={{ marginTop: "0.5rem" }}>
-                    {`${highlight.content.text.slice(0, 90).trim()}…`}
-                  </blockquote>
-                ) : null}
-                {highlight.content.image ? (
-                  <div
-                    className="highlight__image"
-                    style={{ marginTop: "0.5rem" }}
-                  >
-                    <img src={highlight.content.image} alt={"Screenshot"} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div
+                  style={{ flex: 1, cursor: 'pointer' }}
+                  onClick={() => {
+                    updateHash(highlight);
+                  }}
+                >
+                  <div>
+                    <strong>{highlight.comment.text}</strong>
+                    {highlight.content.text ? (
+                      <blockquote style={{ marginTop: "0.5rem" }}>
+                        {`${highlight.content.text.slice(0, 90).trim()}…`}
+                      </blockquote>
+                    ) : null}
+                    {highlight.content.image ? (
+                      <div
+                        className="highlight__image"
+                        style={{ marginTop: "0.5rem" }}
+                      >
+                        <img src={highlight.content.image} alt={"Screenshot"} />
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
-              <div className="highlight__location">
-                Page {highlight.position.pageNumber}
+                  <div className="highlight__location">
+                    Page {highlight.position.pageNumber}
+                  </div>
+                </div>
+                <button
+                  onClick={() => onDeleteHighlight?.(highlight.id)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    padding: '4px 8px',
+                    color: '#666',
+                    marginLeft: '8px'
+                  }}
+                  title="Delete highlight"
+                >
+                  ×
+                </button>
               </div>
             </li>
           ))}
