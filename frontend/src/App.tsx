@@ -49,9 +49,7 @@ export function App() {
     }
   };
 
-  const scrollViewerTo = useRef((highlight: IHighlight) => {
-    // Implement scrolling logic here
-  });
+  const scrollViewerTo = useRef<(highlight: IHighlight) => void>((highlight: IHighlight) => {});
 
   const scrollToHighlightFromHash = useCallback(() => {
     const highlight = getHighlightById(parseIdFromHash());
