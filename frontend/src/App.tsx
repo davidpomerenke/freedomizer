@@ -33,6 +33,10 @@ export function App() {
   const [highlights, setHighlights] = useState<Array<IHighlight>>([]);
   const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null);
 
+  useEffect(() => {
+    console.log('Highlights updated:', highlights);
+  }, [highlights]);
+
   const resetHighlights = () => {
     setHighlights([]);
   };
