@@ -124,6 +124,10 @@ export function App() {
     };
   }, [uploadedPdfUrl]);
 
+  const deleteHighlight = useCallback((id: string) => {
+    setHighlights(prevHighlights => prevHighlights.filter(hl => hl.id !== id));
+  }, []);
+
   return (
     <div className="App" style={{ display: "flex", height: "100vh" }}>
       <Sidebar
@@ -131,7 +135,7 @@ export function App() {
         resetHighlights={resetHighlights}
         toggleDocument={toggleDocument}
         onFileUpload={handleFileUpload}
-        onDeleteHighlight={(id) => setHighlights(h => h.filter(hl => hl.id !== id))}
+        onDeleteHighlight={deleteHighlight}
       />
       <div
         style={{
@@ -171,7 +175,7 @@ export function App() {
                   const isTextHighlight = !highlight.content?.image;
 
                   return isTextHighlight ? (
-                    <div onClick={() => setHighlights(h => h.filter(hl => hl.id !== highlight.id))}>
+                    <div onClick={() => deleteHighlight(highlight.id)}>
                       <Highlight
                         isScrolledTo={isScrolledTo}
                         position={highlight.position}
@@ -179,7 +183,7 @@ export function App() {
                       />
                     </div>
                   ) : (
-                    <div onClick={() => setHighlights(h => h.filter(hl => hl.id !== highlight.id))}>
+                    <div onClick={() => deleteHighlight(highlight.id)}>
                       <AreaHighlight
                         isScrolledTo={isScrolledTo}
                         highlight={highlight}
