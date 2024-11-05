@@ -28,14 +28,31 @@ const resetHash = () => {
   document.location.hash = "";
 };
 
+const findTextInPage = async (page: any, searchText: string) => {
+  const textContent = await page.getTextContent();
+  const matches: Array<{str: string, transform: number[], width: number, height: number}> = [];
+  
+  textContent.items.forEach((item: any) => {
+    if (item.str.toLowerCase().includes(searchText.toLowerCase())) {
+      matches.push({
+        str: item.str,
+        transform: item.transform,
+        width: item.width,
+        height: item.height
+      });
+    }
+  });
+  
+  return matches;
+};
+
 export function App() {
   const [url, setUrl] = useState<string | null>(null);
   const [highlights, setHighlights] = useState<Array<IHighlight>>([]);
   const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    console.log('Highlights updated:', highlights);
-  }, [highlights]);
+  // Add this new ref to store the PDF document
+  const pdfDocumentRef = useRef<any>(null);
 
   const resetHighlights = () => {
     setHighlights([]);
@@ -49,14 +66,20 @@ export function App() {
     }
   };
 
-  const scrollViewerTo = useRef<(highlight: IHighlight) => void>((highlight: IHighlight) => {});
+  const scrollViewerTo = useRef<(highlight: IHighlight) => void>(() => {});
 
   const scrollToHighlightFromHash = useCallback(() => {
-    const highlight = getHighlightById(parseIdFromHash());
+    const highlightId = parseIdFromHash();
+    if (!highlightId) return;
+    
+    const highlight = highlights.find(h => h.id === highlightId);
     if (highlight) {
-      scrollViewerTo.current(highlight);
+      // Add a small delay to ensure the PDF is ready
+      setTimeout(() => {
+        scrollViewerTo.current(highlight);
+      }, 100);
     }
-  }, []);
+  }, [highlights]);
 
   useEffect(() => {
     window.addEventListener("hashchange", scrollToHighlightFromHash, false);
@@ -74,7 +97,6 @@ export function App() {
   };
 
   const addHighlight = (highlight: NewHighlight) => {
-    console.log("Saving highlight", highlight);
     setHighlights((prevHighlights) => [
       { ...highlight, id: getNextId() },
       ...prevHighlights,
@@ -86,7 +108,6 @@ export function App() {
     position: Partial<ScaledPosition>,
     content: Partial<Content>,
   ) => {
-    console.log("Updating highlight", highlightId, position, content);
     setHighlights((prevHighlights) =>
       prevHighlights.map((h) => {
         const {
@@ -126,6 +147,66 @@ export function App() {
     setHighlights(prevHighlights => prevHighlights.filter(hl => hl.id !== id));
   }, []);
 
+  const searchAndHighlight = useCallback(async (searchText: string) => {
+    if (!searchText.trim() || !pdfDocumentRef.current) return;
+
+    const pdfDocument = pdfDocumentRef.current;
+    
+    // Clear existing search highlights
+    setHighlights(prevHighlights => 
+      prevHighlights.filter(h => !h.comment?.text?.startsWith('Found:'))
+    );
+
+    for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
+      const page = await pdfDocument.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 1.0 });
+      const matches = await findTextInPage(page, searchText);
+
+      matches.forEach(match => {
+        // PDF.js provides coordinates in a transform array [scaleX, skewX, skewY, scaleY, translateX, translateY]
+        const [scaleX, , , scaleY, x, y] = match.transform;
+
+        // Use the actual width/height from the text item if available, otherwise calculate
+        const width = match.width || (match.str.length * 5 * Math.abs(scaleX));
+        const height = match.height || (12 * Math.abs(scaleY));
+        
+        // Transform y-coordinate from PDF space (bottom-up) to viewport space (top-down)
+        const transformedY = viewport.height - y;
+        
+        const position = {
+          boundingRect: {
+            x1: x,
+            y1: transformedY - height,
+            x2: x + width,
+            y2: transformedY,
+            width: viewport.width,
+            height: viewport.height,
+          },
+          rects: [{
+            x1: x,
+            y1: transformedY - height,
+            x2: x + width,
+            y2: transformedY,
+            width: viewport.width,
+            height: viewport.height,
+          }],
+          pageNumber: pageNum
+        };
+
+        const highlight = {
+          content: {
+            text: match.str
+          },
+          position,
+          comment: { text: `Found: "${searchText}"`, emoji: "🔍" },
+          id: getNextId()
+        };
+
+        addHighlight(highlight);
+      });
+    }
+  }, [addHighlight]);
+
   return (
     <div className="App" style={{ display: "flex", height: "100vh" }}>
       <Sidebar
@@ -134,6 +215,7 @@ export function App() {
         toggleDocument={toggleDocument}
         onFileUpload={handleFileUpload}
         onDeleteHighlight={deleteHighlight}
+        onSearch={searchAndHighlight}
       />
       <div
         style={{
@@ -144,61 +226,69 @@ export function App() {
       >
         {url ? (
           <PdfLoader url={url} beforeLoad={<Spinner />}>
-            {(pdfDocument) => (
-              <PdfHighlighter
-                pdfDocument={pdfDocument}
-                pdfScaleValue="page-width"
-                enableAreaSelection={(event) => event.altKey}
-                onScrollChange={resetHash}
-                scrollRef={(scrollTo) => {
-                  scrollViewerTo.current = scrollTo;
-                  scrollToHighlightFromHash();
-                }}
-                onSelectionFinished={(position, content) => {
-                  addHighlight({
-                    content,
-                    position,
-                    comment: { text: "remove this", emoji: "" }
-                  });
-                }}
-                highlightTransform={(
-                  highlight,
-                  index,
-                  setTip,
-                  hideTip,
-                  viewportToScaled,
-                  screenshot,
-                  isScrolledTo,
-                ) => {
-                  const isTextHighlight = !highlight.content?.image;
+            {(pdfDocument) => {
+              // Store the PDF document reference when it's loaded
+              pdfDocumentRef.current = pdfDocument;
+              
+              return (
+                <PdfHighlighter
+                  pdfDocument={pdfDocument}
+                  pdfScaleValue="page-width"
+                  enableAreaSelection={(event) => event.altKey}
+                  onScrollChange={resetHash}
+                  scrollRef={(scrollTo) => {
+                    scrollViewerTo.current = scrollTo;
+                    // Only call scroll if there's a hash present
+                    if (document.location.hash) {
+                      scrollToHighlightFromHash();
+                    }
+                  }}
+                  onSelectionFinished={(position, content) => {
+                    addHighlight({
+                      content,
+                      position,
+                      comment: { text: "", emoji: "" }
+                    });
+                  }}
+                  highlightTransform={(
+                    highlight,
+                    index,
+                    setTip,
+                    hideTip,
+                    viewportToScaled,
+                    screenshot,
+                    isScrolledTo,
+                  ) => {
+                    const isTextHighlight = !highlight.content?.image;
 
-                  return isTextHighlight ? (
-                    <div onClick={() => deleteHighlight(highlight.id)}>
-                      <Highlight
-                        isScrolledTo={isScrolledTo}
-                        position={highlight.position}
-                        comment={highlight.comment}
-                      />
-                    </div>
-                  ) : (
-                    <div onClick={() => deleteHighlight(highlight.id)}>
-                      <AreaHighlight
-                        isScrolledTo={isScrolledTo}
-                        highlight={highlight}
-                        onChange={(boundingRect) => {
-                          updateHighlight(
-                            highlight.id,
-                            { boundingRect: viewportToScaled(boundingRect) },
-                            { image: screenshot(boundingRect) },
-                          );
-                        }}
-                      />
-                    </div>
-                  );
-                }}
-                highlights={highlights}
-              />
-            )}
+                    return isTextHighlight ? (
+                      <div onClick={() => deleteHighlight(highlight.id)}>
+                        <Highlight
+                          isScrolledTo={isScrolledTo}
+                          position={highlight.position}
+                          comment={highlight.comment}
+                        />
+                      </div>
+                    ) : (
+                      <div onClick={() => deleteHighlight(highlight.id)}>
+                        <AreaHighlight
+                          isScrolledTo={isScrolledTo}
+                          highlight={highlight}
+                          onChange={(boundingRect) => {
+                            updateHighlight(
+                              highlight.id,
+                              { boundingRect: viewportToScaled(boundingRect) },
+                              { image: screenshot(boundingRect) },
+                            );
+                          }}
+                        />
+                      </div>
+                    );
+                  }}
+                  highlights={highlights}
+                />
+              );
+            }}
           </PdfLoader>
         ) : (
           <div
