@@ -29,6 +29,16 @@ export function Sidebar({
     }
   };
 
+  const sortedHighlights = [...highlights].sort((a, b) => {
+    // First sort by page number
+    if (a.position.pageNumber !== b.position.pageNumber) {
+      return a.position.pageNumber - b.position.pageNumber;
+    }
+    
+    // If on same page, sort by vertical position (top to bottom)
+    return a.position.boundingRect.y1 - b.position.boundingRect.y1;
+  });
+
   return (
     <div className="sidebar" style={{ width: "25vw" }}>
       <div style={{ padding: "1rem" }}>
@@ -67,9 +77,9 @@ export function Sidebar({
       </div>
       {highlights.length > 0 ? (
         <ul className="sidebar__highlights">
-          {highlights.map((highlight, index) => (
+          {sortedHighlights.map((highlight, index) => (
             <li
-              key={index}
+              key={highlight.id}
               className="sidebar__highlight"
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
