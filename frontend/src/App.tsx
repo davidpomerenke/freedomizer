@@ -28,31 +28,10 @@ const resetHash = () => {
   document.location.hash = "";
 };
 
-const findTextInPage = async (page: any, searchText: string) => {
-  const textContent = await page.getTextContent();
-  const matches: Array<{str: string, transform: number[], width: number, height: number}> = [];
-  
-  textContent.items.forEach((item: any) => {
-    if (item.str.toLowerCase().includes(searchText.toLowerCase())) {
-      matches.push({
-        str: item.str,
-        transform: item.transform,
-        width: item.width,
-        height: item.height
-      });
-    }
-  });
-  
-  return matches;
-};
-
 export function App() {
   const [url, setUrl] = useState<string | null>(null);
   const [highlights, setHighlights] = useState<Array<IHighlight>>([]);
   const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null);
-
-  // Add this new ref to store the PDF document
-  const pdfDocumentRef = useRef<any>(null);
 
   const resetHighlights = () => {
     setHighlights([]);
@@ -147,66 +126,6 @@ export function App() {
     setHighlights(prevHighlights => prevHighlights.filter(hl => hl.id !== id));
   }, []);
 
-  const searchAndHighlight = useCallback(async (searchText: string) => {
-    if (!searchText.trim() || !pdfDocumentRef.current) return;
-
-    const pdfDocument = pdfDocumentRef.current;
-    
-    // Clear existing search highlights
-    setHighlights(prevHighlights => 
-      prevHighlights.filter(h => !h.comment?.text?.startsWith('Found:'))
-    );
-
-    for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
-      const page = await pdfDocument.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 1.0 });
-      const matches = await findTextInPage(page, searchText);
-
-      matches.forEach(match => {
-        // PDF.js provides coordinates in a transform array [scaleX, skewX, skewY, scaleY, translateX, translateY]
-        const [scaleX, , , scaleY, x, y] = match.transform;
-
-        // Use the actual width/height from the text item if available, otherwise calculate
-        const width = match.width || (match.str.length * 5 * Math.abs(scaleX));
-        const height = match.height || (12 * Math.abs(scaleY));
-        
-        // Transform y-coordinate from PDF space (bottom-up) to viewport space (top-down)
-        const transformedY = viewport.height - y;
-        
-        const position = {
-          boundingRect: {
-            x1: x,
-            y1: transformedY - height,
-            x2: x + width,
-            y2: transformedY,
-            width: viewport.width,
-            height: viewport.height,
-          },
-          rects: [{
-            x1: x,
-            y1: transformedY - height,
-            x2: x + width,
-            y2: transformedY,
-            width: viewport.width,
-            height: viewport.height,
-          }],
-          pageNumber: pageNum
-        };
-
-        const highlight = {
-          content: {
-            text: match.str
-          },
-          position,
-          comment: { text: `Found: "${searchText}"`, emoji: "🔍" },
-          id: getNextId()
-        };
-
-        addHighlight(highlight);
-      });
-    }
-  }, [addHighlight]);
-
   const handleBackendHighlights = useCallback((newHighlights: Array<IHighlight>) => {
     setHighlights(prevHighlights => [...prevHighlights, ...newHighlights]);
   }, []);
@@ -219,7 +138,6 @@ export function App() {
         toggleDocument={toggleDocument}
         onFileUpload={handleFileUpload}
         onDeleteHighlight={deleteHighlight}
-        onSearch={searchAndHighlight}
         onBackendHighlights={handleBackendHighlights}
       />
       <div
@@ -232,9 +150,6 @@ export function App() {
         {url ? (
           <PdfLoader url={url} beforeLoad={<Spinner />}>
             {(pdfDocument) => {
-              // Store the PDF document reference when it's loaded
-              pdfDocumentRef.current = pdfDocument;
-              
               return (
                 <PdfHighlighter
                   pdfDocument={pdfDocument}

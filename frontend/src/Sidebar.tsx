@@ -7,7 +7,6 @@ interface Props {
   toggleDocument: () => void;
   onFileUpload: (url: string) => void;
   onDeleteHighlight?: (id: string) => void;
-  onSearch: (searchText: string) => void;
   onBackendHighlights: (highlights: Array<IHighlight>) => void;
 }
 
@@ -15,17 +14,13 @@ const updateHash = (highlight: IHighlight) => {
   document.location.hash = `highlight-${highlight.id}`;
 };
 
-declare const APP_VERSION: string;
-
 export function Sidebar({
   highlights,
   resetHighlights,
   onFileUpload,
   onDeleteHighlight,
-  onSearch,
   onBackendHighlights,
 }: Props) {
-  const [searchText, setSearchText] = useState("");
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -88,12 +83,6 @@ export function Sidebar({
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Search triggered with text:", searchText);
-    onSearch(searchText);
-  };
-
   const sortedHighlights = [...highlights].sort((a, b) => {
     // First sort by page number
     if (a.position.pageNumber !== b.position.pageNumber) {
@@ -127,41 +116,6 @@ export function Sidebar({
             style={{ width: "100%" }}
           />
         </div>
-        <form onSubmit={handleSearch} style={{ marginBottom: "1rem" }}>
-          <label
-            htmlFor="search-text"
-            style={{
-              display: "block",
-              marginBottom: "0.5rem",
-              color: "#333",
-            }}
-          >
-            Search and highlight text:
-          </label>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <input
-              id="search-text"
-              type="text"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              style={{ flex: 1, padding: "0.5rem" }}
-              placeholder="Enter text to highlight..."
-            />
-            <button
-              type="submit"
-              style={{
-                padding: "0.5rem 1rem",
-                backgroundColor: "#007bff",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
-              Search
-            </button>
-          </div>
-        </form>
         {highlights.length > 0 && (
           <button
             onClick={resetHighlights}
