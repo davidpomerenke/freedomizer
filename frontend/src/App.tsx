@@ -180,7 +180,7 @@ export function App() {
       formData.append('file', currentPdfFile);
       formData.append('prompt', customPrompt);
 
-      const response = await fetch('http://localhost:8000/analyze-pdf', {
+      const response = await fetch('/api/analyze-pdf', {
         method: 'POST',
         body: formData,
       });

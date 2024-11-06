@@ -1,22 +1,25 @@
-from textwrap import dedent
-from fastapi import FastAPI, Response, UploadFile, HTTPException, File, Form
-from fastapi.middleware.cors import CORSMiddleware
-import pymupdf
+import asyncio
 import io
 import json
-from litellm import acompletion
 import os
+from textwrap import dedent
+
+import pymupdf
 from dotenv import load_dotenv
-import asyncio
+from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile, APIRouter
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from litellm import acompletion
 
 load_dotenv(override=True)
 
 app = FastAPI()
+api_router = APIRouter()
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -79,7 +82,7 @@ async def process_page(page, page_num, prompt):
     return str(page_num), page_results
 
 
-@app.post("/analyze-pdf")
+@api_router.post("/analyze-pdf")
 async def analyze_pdf(file: UploadFile, prompt: str = Form(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="File must be a PDF")
@@ -107,7 +110,7 @@ async def analyze_pdf(file: UploadFile, prompt: str = Form(...)):
     return results
 
 
-@app.post("/save-annotations")
+@api_router.post("/save-annotations")
 async def save_annotations(
     file: UploadFile = File(...),
     annotations: str = Form(...),
@@ -154,6 +157,12 @@ async def save_annotations(
         },
     )
 
+
+# Include the router with prefix
+app.include_router(api_router, prefix="/api")
+
+# Mount static files (built frontend) last
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn

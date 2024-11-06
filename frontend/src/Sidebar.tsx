@@ -47,7 +47,7 @@ export function Sidebar({
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch('http://localhost:8000/analyze-pdf', {
+        const response = await fetch('/api/analyze-pdf', {
           method: 'POST',
           body: formData,
         });
@@ -137,7 +137,7 @@ export function Sidebar({
 
       formData.append('annotations', JSON.stringify(transformedHighlights));
 
-      const response = await fetch('http://localhost:8000/save-annotations', {
+      const response = await fetch('/api/save-annotations', {
         method: 'POST',
         body: formData,
       });
