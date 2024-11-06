@@ -34,10 +34,9 @@ export function App() {
   const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null);
   const [currentPdfFile, setCurrentPdfFile] = useState<File | null>(null);
   const [customPrompt, setCustomPrompt] = useState<string>(
-    `Analyze the following text and identify any sensitive information that should be redacted. 
-Focus on personal information, confidential data, and sensitive business information.
-Also redact all organization names.`
+    `Redact all personal information, confidential data, and sensitive business information.`
   );
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const resetHighlights = () => {
     setHighlights([]);
@@ -175,6 +174,7 @@ Also redact all organization names.`
   const handleAnalyzePdf = useCallback(async () => {
     if (!currentPdfFile) return;
 
+    setIsAnalyzing(true);
     try {
       const formData = new FormData();
       formData.append('file', currentPdfFile);
@@ -225,6 +225,8 @@ Also redact all organization names.`
       setHighlights(prevHighlights => [...prevHighlights, ...convertedHighlights]);
     } catch (error) {
       console.error('Error analyzing PDF:', error);
+    } finally {
+      setIsAnalyzing(false);
     }
   }, [currentPdfFile, customPrompt]);
 
@@ -240,6 +242,7 @@ Also redact all organization names.`
         currentPdfFile={currentPdfFile}
         customPrompt={customPrompt}
         setCustomPrompt={setCustomPrompt}
+        isAnalyzing={isAnalyzing}
         onAnalyzePdf={handleAnalyzePdf}
       />
       <div

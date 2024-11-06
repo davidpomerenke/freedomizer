@@ -12,6 +12,7 @@ interface Props {
   customPrompt: string;
   setCustomPrompt: (prompt: string) => void;
   onAnalyzePdf: () => void;
+  isAnalyzing: boolean;
 }
 
 const updateHash = (highlight: IHighlight) => {
@@ -33,6 +34,7 @@ export function Sidebar({
   customPrompt,
   setCustomPrompt,
   onAnalyzePdf,
+  isAnalyzing,
 }: Props) {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -210,10 +212,10 @@ export function Sidebar({
               onFocus={(e) => adjustTextareaHeight(e.target)}
               style={{
                 width: "100%",
-                minHeight: "80px",
+                minHeight: "70px",
                 marginBottom: "0.5rem",
                 padding: "0.5rem",
-                fontSize: "0.6rem",
+                fontSize: "0.7rem",
                 fontFamily: "Monaco, Consolas, 'Courier New', monospace",
                 lineHeight: "1.4",
                 border: "1px solid #ccc",
@@ -225,15 +227,29 @@ export function Sidebar({
             />
             <button
               onClick={onAnalyzePdf}
+              disabled={isAnalyzing}
               style={{
                 marginBottom: "1rem",
                 padding: "0.5rem",
                 width: "100%",
                 fontSize: "0.9rem",
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+                cursor: isAnalyzing ? "not-allowed" : "pointer",
+                opacity: isAnalyzing ? 0.7 : 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px"
               }}
             >
-              Get AI Suggestions
+              {isAnalyzing ? (
+                <>
+                  <div className="spinner-small"></div>
+                  Analyzing PDF...
+                </>
+              ) : (
+                "Get AI Suggestions"
+              )}
             </button>
           </div>
         )}
