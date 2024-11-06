@@ -221,7 +221,7 @@ export function Sidebar({
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
               }}
             >
-              AI Analysis Prompt:
+              AI Redaction Prompt:
             </label>
             <textarea
               id="prompt-input"
@@ -269,7 +269,7 @@ export function Sidebar({
                   Analyzing PDF...
                 </>
               ) : (
-                "Get AI Suggestions"
+                "Get AI Redactions"
               )}
             </button>
             <div style={{ marginBottom: "1rem" }}>
