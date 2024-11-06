@@ -207,6 +207,10 @@ export function App() {
     }
   }, [addHighlight]);
 
+  const handleBackendHighlights = useCallback((newHighlights: Array<IHighlight>) => {
+    setHighlights(prevHighlights => [...prevHighlights, ...newHighlights]);
+  }, []);
+
   return (
     <div className="App" style={{ display: "flex", height: "100vh" }}>
       <Sidebar
@@ -216,6 +220,7 @@ export function App() {
         onFileUpload={handleFileUpload}
         onDeleteHighlight={deleteHighlight}
         onSearch={searchAndHighlight}
+        onBackendHighlights={handleBackendHighlights}
       />
       <div
         style={{

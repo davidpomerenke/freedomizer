@@ -27,16 +27,27 @@ async def analyze_pdf(file: UploadFile):
         pdf_stream = io.BytesIO(contents)
         doc = pymupdf.open(stream=pdf_stream, filetype="pdf")
 
-        # TODO: handle metadata
-        # metadata = doc.metadata
-
-        search_results = []
-        for page in doc:
-            results = page.search_for(search_text)
-            search_results.append(results)
+        results = {}
+        for page_num, page in enumerate(doc, 1):
+            matches = page.search_for(search_text)
+            if matches:
+                # Get page dimensions
+                page_rect = page.rect
+                results[str(page_num)] = [
+                    {
+                        "x0": rect[0],
+                        "y0": rect[1],
+                        "x1": rect[2],
+                        "y1": rect[3],
+                        "page_width": page_rect.width,
+                        "page_height": page_rect.height,
+                        "text": search_text,
+                    }
+                    for rect in matches
+                ]
 
         doc.close()
-        return search_results
+        return results
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing PDF: {str(e)}")

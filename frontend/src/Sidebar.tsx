@@ -8,6 +8,7 @@ interface Props {
   onFileUpload: (url: string) => void;
   onDeleteHighlight?: (id: string) => void;
   onSearch: (searchText: string) => void;
+  onBackendHighlights: (highlights: Array<IHighlight>) => void;
 }
 
 const updateHash = (highlight: IHighlight) => {
@@ -22,6 +23,7 @@ export function Sidebar({
   onFileUpload,
   onDeleteHighlight,
   onSearch,
+  onBackendHighlights,
 }: Props) {
   const [searchText, setSearchText] = useState("");
 
@@ -45,7 +47,48 @@ export function Sidebar({
         }
 
         const analysisResult = await response.json();
-        console.log('PDF Analysis Result:', analysisResult);
+        
+        // Convert backend highlights to frontend format
+        const convertedHighlights = Object.entries(analysisResult).flatMap(
+          ([pageNum, highlights]: [string, any[]]) => 
+            highlights.map((h: any) => {
+              // Get page dimensions from the backend response
+              const pageHeight = h.page_height;
+              const pageWidth = h.page_width;
+
+              // Transform coordinates
+              const y0 = h.y1; // Flip Y coordinates
+              const y1 = h.y0; // Flip Y coordinates
+
+              // Calculate dimensions of the highlight
+              const width = h.x1 - h.x0;
+              const height = h.y1 - h.y0;
+
+              const boundingRect = {
+                x1: h.x0,
+                y1: y1,
+                x2: h.x1,
+                y2: y0,
+                width: pageWidth,
+                height: pageHeight,
+              };
+
+              return {
+                content: {
+                  text: h.text || ''
+                },
+                position: {
+                  boundingRect,
+                  rects: [boundingRect],
+                  pageNumber: parseInt(pageNum)
+                },
+                comment: { text: "AI Generated", emoji: "🤖" },
+                id: String(Math.random()).slice(2)
+              };
+            })
+        );
+        
+        onBackendHighlights(convertedHighlights);
       } catch (error) {
         console.error('Error analyzing PDF:', error);
       }
