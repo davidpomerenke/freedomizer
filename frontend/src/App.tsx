@@ -246,6 +246,7 @@ export function App() {
         onAnalyzePdf={handleAnalyzePdf}
       />
       <div
+        className="pdf-viewer"
         style={{
           height: "100vh",
           width: "75vw",
