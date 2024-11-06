@@ -106,21 +106,21 @@ export function Sidebar({
       const formData = new FormData();
       formData.append('file', currentPdfFile);
       
-      // Transform highlights to match PyMuPDF coordinate system
-      const transformedHighlights = highlights.map(h => ({
+      // Transform highlights back to PyMuPDF coordinate system
+      const transformedHighlights = highlights.map(h => {
+        return {
         ...h,
         position: {
           ...h.position,
           boundingRect: {
-            x1: h.position.boundingRect.x1,
+              ...h.position.boundingRect,
+              // Convert back to PyMuPDF coordinates
             y1: h.position.boundingRect.y1,
-            x2: h.position.boundingRect.x2,
-            y2: h.position.boundingRect.y2,
-            width: h.position.boundingRect.width,
-            height: h.position.boundingRect.height
+              y2: h.position.boundingRect.y2
           }
         }
-      }));
+        };
+      });
 
       formData.append('annotations', JSON.stringify(transformedHighlights));
 

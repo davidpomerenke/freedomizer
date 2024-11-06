@@ -15,7 +15,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-search_text = "Effekt"
+search_text = "Abwassermanagement"
 
 
 @app.post("/analyze-pdf")
@@ -71,7 +71,7 @@ async def save_annotations(
     doc = pymupdf.open(stream=pdf_stream, filetype="pdf")
 
     # Process each highlight
-    for highlight in highlights[:3]:
+    for highlight in highlights:
         page = doc[highlight["position"]["pageNumber"] - 1]  # 0-based index
         rect = highlight["position"]["boundingRect"]
         page.add_highlight_annot([rect["x1"], rect["y1"], rect["x2"], rect["y2"]])
