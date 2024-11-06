@@ -25,11 +25,30 @@ export function Sidebar({
 }: Props) {
   const [searchText, setSearchText] = useState("");
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const fileUrl = URL.createObjectURL(file);
       onFileUpload(fileUrl);
+
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('http://localhost:8000/analyze-pdf', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to analyze PDF');
+        }
+
+        const analysisResult = await response.json();
+        console.log('PDF Analysis Result:', analysisResult);
+      } catch (error) {
+        console.error('Error analyzing PDF:', error);
+      }
     }
   };
 
