@@ -328,6 +328,13 @@ export function App() {
             <div style={{ textAlign: "center" }}>
               <h2>No PDF loaded</h2>
               <p>Upload a PDF to start redacting sensitive information</p>
+              <p style={{ 
+                fontSize: "0.9rem", 
+                color: "#666",
+                marginTop: "1rem" 
+              }}>
+                Tip: Hold Alt and drag to create rectangular selections
+              </p>
             </div>
           </div>
         )}

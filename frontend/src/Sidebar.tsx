@@ -58,10 +58,10 @@ export function Sidebar({
 
         const analysisResult = await response.json();
         console.log("analysisResult", analysisResult);
-        
+
         // Convert backend highlights to frontend format
         const convertedHighlights = Object.entries(analysisResult).flatMap(
-          ([pageNum, highlights]: [string, any[]]) => 
+          ([pageNum, highlights]: [string, any[]]) =>
             highlights.map((h: any) => {
               return {
                 content: {
@@ -91,7 +91,7 @@ export function Sidebar({
               };
             })
         );
-        
+
         onBackendHighlights(convertedHighlights);
       } catch (error) {
         console.error('Error analyzing PDF:', error);
@@ -104,7 +104,7 @@ export function Sidebar({
     if (a.position.pageNumber !== b.position.pageNumber) {
       return a.position.pageNumber - b.position.pageNumber;
     }
-    
+
     // If on same page, sort by vertical position (top to bottom)
     return a.position.boundingRect.y1 - b.position.boundingRect.y1;
   });
@@ -118,20 +118,20 @@ export function Sidebar({
     try {
       const formData = new FormData();
       formData.append('file', currentPdfFile);
-      
+
       // Transform highlights back to PyMuPDF coordinate system
       const transformedHighlights = highlights.map(h => {
         return {
-        ...h,
-        position: {
-          ...h.position,
-          boundingRect: {
+          ...h,
+          position: {
+            ...h.position,
+            boundingRect: {
               ...h.position.boundingRect,
               // Convert back to PyMuPDF coordinates
-            y1: h.position.boundingRect.y1,
+              y1: h.position.boundingRect.y1,
               y2: h.position.boundingRect.y2
+            }
           }
-        }
         };
       });
 
@@ -187,6 +187,8 @@ export function Sidebar({
             style={{ width: "100%" }}
           />
         </div>
+
+
 
         {currentPdfFile && (
           <div style={{ marginBottom: "1rem" }}>
@@ -251,7 +253,21 @@ export function Sidebar({
                 "Get AI Suggestions"
               )}
             </button>
+            <div style={{ marginBottom: "1rem" }}>
+              <div
+                style={{
+                  padding: "0.5rem",
+                  backgroundColor: "#f5f5f5",
+                  borderRadius: "4px",
+                  fontSize: "0.8rem",
+                  color: "#666",
+                }}
+              >
+                <strong>Tip:</strong> Hold Alt and drag to create rectangular selections
+              </div>
+            </div>
           </div>
+
         )}
 
         {highlights.length > 0 && (
