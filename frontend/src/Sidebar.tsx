@@ -5,9 +5,10 @@ interface Props {
   highlights: Array<IHighlight>;
   resetHighlights: () => void;
   toggleDocument: () => void;
-  onFileUpload: (url: string) => void;
+  onFileUpload: (fileUrl: string, file: File) => void;
   onDeleteHighlight?: (id: string) => void;
   onBackendHighlights: (highlights: Array<IHighlight>) => void;
+  currentPdfFile: File | null;
 }
 
 const updateHash = (highlight: IHighlight) => {
@@ -20,13 +21,14 @@ export function Sidebar({
   onFileUpload,
   onDeleteHighlight,
   onBackendHighlights,
+  currentPdfFile,
 }: Props) {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const fileUrl = URL.createObjectURL(file);
-      onFileUpload(fileUrl);
+      onFileUpload(fileUrl, file);
 
       try {
         const formData = new FormData();
@@ -42,6 +44,7 @@ export function Sidebar({
         }
 
         const analysisResult = await response.json();
+        console.log("analysisResult", analysisResult);
         
         // Convert backend highlights to frontend format
         const convertedHighlights = Object.entries(analysisResult).flatMap(
@@ -93,6 +96,60 @@ export function Sidebar({
     return a.position.boundingRect.y1 - b.position.boundingRect.y1;
   });
 
+  const handleSave = async () => {
+    if (!currentPdfFile) {
+      alert("No PDF file loaded");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', currentPdfFile);
+      
+      // Transform highlights to match PyMuPDF coordinate system
+      const transformedHighlights = highlights.map(h => ({
+        ...h,
+        position: {
+          ...h.position,
+          boundingRect: {
+            x1: h.position.boundingRect.x1,
+            y1: h.position.boundingRect.y1,
+            x2: h.position.boundingRect.x2,
+            y2: h.position.boundingRect.y2,
+            width: h.position.boundingRect.width,
+            height: h.position.boundingRect.height
+          }
+        }
+      }));
+
+      formData.append('annotations', JSON.stringify(transformedHighlights));
+
+      const response = await fetch('http://localhost:8000/save-annotations', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save annotations');
+      }
+
+      // Download the annotated PDF
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `annotated_${currentPdfFile.name}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+    } catch (error) {
+      console.error('Error saving annotations:', error);
+      alert('Failed to save annotations');
+    }
+  };
+
   return (
     <div className="sidebar" style={{ width: "25vw" }}>
       <div style={{ padding: "1rem" }}>
@@ -126,6 +183,18 @@ export function Sidebar({
             }}
           >
             Reset Highlights
+          </button>
+        )}
+        {highlights.length > 0 && currentPdfFile && (
+          <button
+            onClick={handleSave}
+            style={{
+              marginBottom: "1rem",
+              padding: "0.5rem",
+              width: "100%",
+            }}
+          >
+            Save Annotations
           </button>
         )}
       </div>
@@ -175,7 +244,7 @@ export function Sidebar({
                   }}
                   title="Delete highlight"
                 >
-                  ×
+                  x
                 </button>
               </div>
             </li>

@@ -1,7 +1,8 @@
-from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi import FastAPI, Response, UploadFile, HTTPException, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import pymupdf
 import io
+import json
 
 app = FastAPI()
 
@@ -51,6 +52,45 @@ async def analyze_pdf(file: UploadFile):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing PDF: {str(e)}")
+
+
+@app.post("/save-annotations")
+async def save_annotations(
+    file: UploadFile = File(...),
+    annotations: str = Form(...),
+):
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="File must be a PDF")
+
+    # Parse the annotations JSON string
+    highlights = json.loads(annotations)
+
+    # Read the PDF file
+    contents = await file.read()
+    pdf_stream = io.BytesIO(contents)
+    doc = pymupdf.open(stream=pdf_stream, filetype="pdf")
+
+    # Process each highlight
+    for highlight in highlights[:3]:
+        page = doc[highlight["position"]["pageNumber"] - 1]  # 0-based index
+        rect = highlight["position"]["boundingRect"]
+
+        # Create annotation on the PDF
+        print("added highlight", rect)
+        page.add_highlight_annot([rect["x1"], rect["y1"], rect["x2"], rect["y2"]])
+
+    # Save the annotated PDF
+    output = io.BytesIO()
+    doc.save(output)
+    doc.close()
+
+    return Response(
+        content=output.getvalue(),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=annotated_{file.filename}"
+        },
+    )
 
 
 if __name__ == "__main__":

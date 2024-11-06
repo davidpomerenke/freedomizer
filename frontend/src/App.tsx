@@ -32,6 +32,7 @@ export function App() {
   const [url, setUrl] = useState<string | null>(null);
   const [highlights, setHighlights] = useState<Array<IHighlight>>([]);
   const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null);
+  const [currentPdfFile, setCurrentPdfFile] = useState<File | null>(null);
 
   const resetHighlights = () => {
     setHighlights([]);
@@ -107,10 +108,11 @@ export function App() {
     );
   };
 
-  const handleFileUpload = (fileUrl: string) => {
+  const handleFileUpload = (fileUrl: string, file: File) => {
     setUploadedPdfUrl(fileUrl);
     setUrl(fileUrl);
-    setHighlights([]); // Reset highlights for new document
+    setHighlights([]);
+    setCurrentPdfFile(file);
   };
 
   // Clean up object URLs when component unmounts or URL changes
@@ -139,6 +141,7 @@ export function App() {
         onFileUpload={handleFileUpload}
         onDeleteHighlight={deleteHighlight}
         onBackendHighlights={handleBackendHighlights}
+        currentPdfFile={currentPdfFile}
       />
       <div
         style={{
