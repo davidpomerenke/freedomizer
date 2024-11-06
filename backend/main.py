@@ -74,9 +74,6 @@ async def save_annotations(
     for highlight in highlights[:3]:
         page = doc[highlight["position"]["pageNumber"] - 1]  # 0-based index
         rect = highlight["position"]["boundingRect"]
-
-        # Create annotation on the PDF
-        print("added highlight", rect)
         page.add_highlight_annot([rect["x1"], rect["y1"], rect["x2"], rect["y2"]])
 
     # Save the annotated PDF
@@ -84,12 +81,15 @@ async def save_annotations(
     doc.save(output)
     doc.close()
 
+    # Create a safe filename by removing problematic characters
+    safe_filename = "".join(
+        c for c in file.filename if c.isalnum() or c in ("-", "_", ".")
+    )
+
     return Response(
         content=output.getvalue(),
         media_type="application/pdf",
-        headers={
-            "Content-Disposition": f"attachment; filename=annotated_{file.filename}"
-        },
+        headers={"Content-Disposition": f"attachment; filename={safe_filename}"},
     )
 
 
