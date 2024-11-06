@@ -25,7 +25,7 @@ search_text = "BMZ"
 
 
 @app.post("/analyze-pdf")
-async def analyze_pdf(file: UploadFile):
+async def analyze_pdf(file: UploadFile, prompt: str = Form(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="File must be a PDF")
 
@@ -39,9 +39,7 @@ async def analyze_pdf(file: UploadFile):
         page_text = page.get_text()
 
         # Query LLM for sensitive information
-        prompt = dedent(f"""Analyze the following text and identify any sensitive information that should be redacted. 
-        Focus on personal information, confidential data, and sensitive business information.
-        Also redact all organization names.
+        full_prompt = dedent(f"""{prompt}
         Reply with a JSON array like this:
         {{"redactions": ["phrase1", "phrase2", "phrase3"]}}
         The array can be empty. The phrases must be exact matches. Do NOT wrap the JSON array in a code environment or any other text.
@@ -51,8 +49,8 @@ async def analyze_pdf(file: UploadFile):
         {page_text}""")
 
         response = completion(
-            model="azure/gpt-4o-mini",  # or your specific Azure OpenAI deployment name
-            messages=[{"role": "user", "content": prompt}],
+            model="azure/gpt-4o-mini",
+            messages=[{"role": "user", "content": full_prompt}],
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
             api_base=os.getenv("AZURE_OPENAI_API_BASE"),
             api_version=os.getenv("AZURE_OPENAI_API_VERSION"),

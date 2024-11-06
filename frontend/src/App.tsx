@@ -33,6 +33,11 @@ export function App() {
   const [highlights, setHighlights] = useState<Array<IHighlight>>([]);
   const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null);
   const [currentPdfFile, setCurrentPdfFile] = useState<File | null>(null);
+  const [customPrompt, setCustomPrompt] = useState<string>(
+    `Analyze the following text and identify any sensitive information that should be redacted. 
+Focus on personal information, confidential data, and sensitive business information.
+Also redact all organization names.`
+  );
 
   const resetHighlights = () => {
     setHighlights([]);
@@ -167,6 +172,62 @@ export function App() {
     setHighlights(prevHighlights => [...prevHighlights, ...newHighlights]);
   }, []);
 
+  const handleAnalyzePdf = useCallback(async () => {
+    if (!currentPdfFile) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('file', currentPdfFile);
+      formData.append('prompt', customPrompt);
+
+      const response = await fetch('http://localhost:8000/analyze-pdf', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze PDF');
+      }
+
+      const analysisResult = await response.json();
+      
+      // Convert backend highlights to frontend format
+      const convertedHighlights = Object.entries(analysisResult).flatMap(
+        ([pageNum, highlights]: [string, any[]]) => 
+          highlights.map((h: any) => ({
+            content: {
+              text: h.text || ''
+            },
+            position: {
+              boundingRect: {
+                x1: h.x0,
+                y1: h.y0,
+                x2: h.x1,
+                y2: h.y1,
+                width: h.page_width,
+                height: h.page_height,
+              },
+              rects: [{
+                x1: h.x0,
+                y1: h.y0,
+                x2: h.x1,
+                y2: h.y1,
+                width: h.page_width,
+                height: h.page_height,
+              }],
+              pageNumber: parseInt(pageNum)
+            },
+            comment: { text: "AI Generated", emoji: "🤖" },
+            id: String(Math.random()).slice(2)
+          }))
+      );
+      
+      setHighlights(prevHighlights => [...prevHighlights, ...convertedHighlights]);
+    } catch (error) {
+      console.error('Error analyzing PDF:', error);
+    }
+  }, [currentPdfFile, customPrompt]);
+
   return (
     <div className="App" style={{ display: "flex", height: "100vh" }}>
       <Sidebar
@@ -177,6 +238,9 @@ export function App() {
         onDeleteHighlight={deleteHighlight}
         onBackendHighlights={handleBackendHighlights}
         currentPdfFile={currentPdfFile}
+        customPrompt={customPrompt}
+        setCustomPrompt={setCustomPrompt}
+        onAnalyzePdf={handleAnalyzePdf}
       />
       <div
         style={{

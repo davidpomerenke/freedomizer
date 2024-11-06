@@ -9,10 +9,18 @@ interface Props {
   onDeleteHighlight?: (id: string) => void;
   onBackendHighlights: (highlights: Array<IHighlight>) => void;
   currentPdfFile: File | null;
+  customPrompt: string;
+  setCustomPrompt: (prompt: string) => void;
+  onAnalyzePdf: () => void;
 }
 
 const updateHash = (highlight: IHighlight) => {
   document.location.hash = `highlight-${highlight.id}`;
+};
+
+const adjustTextareaHeight = (element: HTMLTextAreaElement) => {
+  element.style.height = 'auto';
+  element.style.height = element.scrollHeight + 'px';
 };
 
 export function Sidebar({
@@ -22,6 +30,9 @@ export function Sidebar({
   onDeleteHighlight,
   onBackendHighlights,
   currentPdfFile,
+  customPrompt,
+  setCustomPrompt,
+  onAnalyzePdf,
 }: Props) {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,6 +172,7 @@ export function Sidebar({
               display: "block",
               marginBottom: "0.5rem",
               color: "#333",
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
             }}
           >
             Choose a PDF to get started:
@@ -173,6 +185,59 @@ export function Sidebar({
             style={{ width: "100%" }}
           />
         </div>
+
+        {currentPdfFile && (
+          <div style={{ marginBottom: "1rem" }}>
+            <label
+              htmlFor="prompt-input"
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                color: "#333",
+                fontSize: "0.9rem",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+              }}
+            >
+              AI Analysis Prompt:
+            </label>
+            <textarea
+              id="prompt-input"
+              value={customPrompt}
+              onChange={(e) => {
+                setCustomPrompt(e.target.value);
+                adjustTextareaHeight(e.target);
+              }}
+              onFocus={(e) => adjustTextareaHeight(e.target)}
+              style={{
+                width: "100%",
+                minHeight: "80px",
+                marginBottom: "0.5rem",
+                padding: "0.5rem",
+                fontSize: "0.6rem",
+                fontFamily: "Monaco, Consolas, 'Courier New', monospace",
+                lineHeight: "1.4",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                resize: "none",
+                boxSizing: "border-box",
+                overflow: "hidden",
+              }}
+            />
+            <button
+              onClick={onAnalyzePdf}
+              style={{
+                marginBottom: "1rem",
+                padding: "0.5rem",
+                width: "100%",
+                fontSize: "0.9rem",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+              }}
+            >
+              Get AI Suggestions
+            </button>
+          </div>
+        )}
+
         {highlights.length > 0 && (
           <button
             onClick={resetHighlights}
