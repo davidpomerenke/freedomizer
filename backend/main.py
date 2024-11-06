@@ -1,7 +1,6 @@
 from fastapi import FastAPI, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import fitz  # PyMuPDF
-from typing import Dict, List
+import pymupdf
 import io
 
 app = FastAPI()
@@ -15,43 +14,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+search_text = "Effekt"
+
 
 @app.post("/analyze-pdf")
-async def analyze_pdf(file: UploadFile) -> Dict:
+async def analyze_pdf(file: UploadFile):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="File must be a PDF")
 
     try:
-        # Read the uploaded file into memory
         contents = await file.read()
         pdf_stream = io.BytesIO(contents)
+        doc = pymupdf.open(stream=pdf_stream, filetype="pdf")
 
-        # Open the PDF with PyMuPDF
-        doc = fitz.open(stream=pdf_stream, filetype="pdf")
+        # TODO: handle metadata
+        # metadata = doc.metadata
 
-        # Analyze PDF structure
-        structure = {
-            "filename": file.filename,
-            "page_count": len(doc),
-            "metadata": doc.metadata,
-            "pages": [],
-        }
-
-        # Analyze each page
-        for page_num in range(len(doc)):
-            page = doc[page_num]
-            page_info = {
-                "page_number": page_num + 1,
-                "width": page.rect.width,
-                "height": page.rect.height,
-                "rotation": page.rotation,
-                "text_length": len(page.get_text()),
-                "image_count": len(page.get_images()),
-            }
-            structure["pages"].append(page_info)
+        search_results = []
+        for page in doc:
+            results = page.search_for(search_text)
+            search_results.append(results)
 
         doc.close()
-        return structure
+        return search_results
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing PDF: {str(e)}")
