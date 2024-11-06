@@ -260,7 +260,7 @@ export function App() {
           >
             <div style={{ textAlign: "center" }}>
               <h2>No PDF loaded</h2>
-              <p>Please upload a PDF using the sidebar</p>
+              <p>Upload a PDF to start redacting sensitive information</p>
             </div>
           </div>
         )}

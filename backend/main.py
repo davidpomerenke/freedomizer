@@ -15,7 +15,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-search_text = "Abwassermanagement"
+search_text = "BMZ"
 
 
 @app.post("/analyze-pdf")
@@ -70,13 +70,20 @@ async def save_annotations(
     pdf_stream = io.BytesIO(contents)
     doc = pymupdf.open(stream=pdf_stream, filetype="pdf")
 
-    # Process each highlight
+    # Process each highlight as a redaction
     for highlight in highlights:
         page = doc[highlight["position"]["pageNumber"] - 1]  # 0-based index
         rect = highlight["position"]["boundingRect"]
-        page.add_highlight_annot([rect["x1"], rect["y1"], rect["x2"], rect["y2"]])
 
-    # Save the annotated PDF
+        # Create redaction annotation
+        page.add_redact_annot(
+            quad=[rect["x1"], rect["y1"], rect["x2"], rect["y2"]], fill=(1, 0.41, 0.71)
+        )
+
+        # Apply the redaction
+        page.apply_redactions()
+
+    # Save the redacted PDF
     output = io.BytesIO()
     doc.save(output)
     doc.close()
@@ -89,7 +96,9 @@ async def save_annotations(
     return Response(
         content=output.getvalue(),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={safe_filename}"},
+        headers={
+            "Content-Disposition": f"attachment; filename=redacted_{safe_filename}"
+        },
     )
 
 

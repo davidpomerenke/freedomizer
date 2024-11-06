@@ -153,7 +153,7 @@ export function Sidebar({
   return (
     <div className="sidebar" style={{ width: "25vw" }}>
       <div style={{ padding: "1rem" }}>
-        <h3>PDF Highlighter</h3>
+        <h3>PDF Redactor</h3>
         <div style={{ marginBottom: "1rem" }}>
           <label
             htmlFor="pdf-upload"
@@ -182,7 +182,7 @@ export function Sidebar({
               width: "100%",
             }}
           >
-            Reset Highlights
+            Reset Redactions
           </button>
         )}
         {highlights.length > 0 && currentPdfFile && (
@@ -194,7 +194,7 @@ export function Sidebar({
               width: "100%",
             }}
           >
-            Save Annotations
+            Save Redacted PDF
           </button>
         )}
       </div>
@@ -242,7 +242,7 @@ export function Sidebar({
                     color: '#666',
                     marginLeft: '8px'
                   }}
-                  title="Delete highlight"
+                  title="Remove redaction"
                 >
                   x
                 </button>
@@ -252,7 +252,7 @@ export function Sidebar({
         </ul>
       ) : (
         <div style={{ padding: "1rem", color: "#666", textAlign: "center" }}>
-          No highlights yet
+          No redactions yet
         </div>
       )}
     </div>
