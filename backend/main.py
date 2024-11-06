@@ -1,8 +1,14 @@
+from textwrap import dedent
 from fastapi import FastAPI, Response, UploadFile, HTTPException, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import pymupdf
 import io
 import json
+from litellm import completion
+import os
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
 
 app = FastAPI()
 
@@ -23,35 +29,69 @@ async def analyze_pdf(file: UploadFile):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="File must be a PDF")
 
-    try:
-        contents = await file.read()
-        pdf_stream = io.BytesIO(contents)
-        doc = pymupdf.open(stream=pdf_stream, filetype="pdf")
+    contents = await file.read()
+    pdf_stream = io.BytesIO(contents)
+    doc = pymupdf.open(stream=pdf_stream, filetype="pdf")
 
-        results = {}
-        for page_num, page in enumerate(doc, 1):
-            matches = page.search_for(search_text)
-            if matches:
-                # Get page dimensions
-                page_rect = page.rect
-                results[str(page_num)] = [
-                    {
-                        "x0": rect[0],
-                        "y0": rect[1],
-                        "x1": rect[2],
-                        "y1": rect[3],
-                        "page_width": page_rect.width,
-                        "page_height": page_rect.height,
-                        "text": search_text,
-                    }
-                    for rect in matches
-                ]
+    results = {}
+    for page_num, page in enumerate(doc, 1):
+        # Extract text from the page
+        page_text = page.get_text()
 
-        doc.close()
-        return results
+        # Query LLM for sensitive information
+        prompt = dedent(f"""Analyze the following text and identify any sensitive information that should be redacted. 
+        Focus on personal information, confidential data, and sensitive business information.
+        Also redact all organization names.
+        Reply with a JSON array like this:
+        {{"redactions": ["phrase1", "phrase2", "phrase3"]}}
+        The array can be empty. The phrases must be exact matches. Do NOT wrap the JSON array in a code environment or any other text.
+        
+        Text to analyze:
+                        
+        {page_text}""")
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing PDF: {str(e)}")
+        response = completion(
+            model="azure/gpt-4o-mini",  # or your specific Azure OpenAI deployment name
+            messages=[{"role": "user", "content": prompt}],
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            api_base=os.getenv("AZURE_OPENAI_API_BASE"),
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
+            response_format={"type": "json_object"},
+            temperature=0,
+        )
+
+        # Parse response and search for each phrase
+        sensitive_phrases = response.choices[0].message.content.strip()
+        sensitive_phrases = json.loads(sensitive_phrases)["redactions"]
+        print(sensitive_phrases)
+        page_results = []
+
+        for phrase in sensitive_phrases:
+            phrase = phrase.strip()
+            if phrase:  # Skip empty lines
+                matches = page.search_for(phrase)
+                if matches:
+                    page_rect = page.rect
+                    page_results.extend(
+                        [
+                            {
+                                "x0": rect[0],
+                                "y0": rect[1],
+                                "x1": rect[2],
+                                "y1": rect[3],
+                                "page_width": page_rect.width,
+                                "page_height": page_rect.height,
+                                "text": phrase,
+                            }
+                            for rect in matches
+                        ]
+                    )
+
+        if page_results:
+            results[str(page_num)] = page_results
+
+    doc.close()
+    return results
 
 
 @app.post("/save-annotations")
