@@ -52,34 +52,27 @@ export function Sidebar({
         const convertedHighlights = Object.entries(analysisResult).flatMap(
           ([pageNum, highlights]: [string, any[]]) => 
             highlights.map((h: any) => {
-              // Get page dimensions from the backend response
-              const pageHeight = h.page_height;
-              const pageWidth = h.page_width;
-
-              // Transform coordinates
-              const y0 = h.y1; // Flip Y coordinates
-              const y1 = h.y0; // Flip Y coordinates
-
-              // Calculate dimensions of the highlight
-              const width = h.x1 - h.x0;
-              const height = h.y1 - h.y0;
-
-              const boundingRect = {
-                x1: h.x0,
-                y1: y1,
-                x2: h.x1,
-                y2: y0,
-                width: pageWidth,
-                height: pageHeight,
-              };
-
               return {
                 content: {
                   text: h.text || ''
                 },
                 position: {
-                  boundingRect,
-                  rects: [boundingRect],
+                  boundingRect: {
+                    x1: h.x0,
+                    y1: h.y0,
+                    x2: h.x1,
+                    y2: h.y1,
+                    width: h.page_width,
+                    height: h.page_height,
+                  },
+                  rects: [{
+                    x1: h.x0,
+                    y1: h.y0,
+                    x2: h.x1,
+                    y2: h.y1,
+                    width: h.page_width,
+                    height: h.page_height,
+                  }],
                   pageNumber: parseInt(pageNum)
                 },
                 comment: { text: "AI Generated", emoji: "🤖" },

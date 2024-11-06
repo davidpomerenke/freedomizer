@@ -252,7 +252,7 @@ export function App() {
                     addHighlight({
                       content,
                       position,
-                      comment: { text: "", emoji: "" }
+                      comment: { text: "", emoji: "✋" }
                     });
                   }}
                   highlightTransform={(
