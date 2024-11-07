@@ -231,6 +231,14 @@ export function Sidebar({
                 adjustTextareaHeight(e.target);
               }}
               onFocus={(e) => adjustTextareaHeight(e.target)}
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  if (!isAnalyzing) {
+                    onAnalyzePdf();
+                  }
+                }
+              }}
               style={{
                 width: "100%",
                 minHeight: "70px",
