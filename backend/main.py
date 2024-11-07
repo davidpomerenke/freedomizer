@@ -1,4 +1,3 @@
-import asyncio
 import io
 import json
 import os
@@ -6,10 +5,19 @@ from textwrap import dedent
 
 import pymupdf
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile, APIRouter
+from fastapi import (
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Response,
+    UploadFile,
+    APIRouter,
+)
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from litellm import acompletion
+from litellm import completion
 
 load_dotenv(override=True)
 
@@ -19,7 +27,7 @@ api_router = APIRouter()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3003", "http://127.0.0.1:3003"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,90 +36,107 @@ app.add_middleware(
 search_text = "BMZ"
 
 
-async def process_page(page, page_num, prompt):
-    # Extract text from the page
-    page_text = page.get_text()
+def process_pdf_streaming(doc, prompt):
+    # Collect all pages with page numbers
+    all_pages_text = []
+    for page_num, page in enumerate(doc, 1):
+        page_text = page.get_text()
+        all_pages_text.append(f"=== PAGE {page_num} ===\n{page_text}")
 
-    # Query LLM for sensitive information
-    full_prompt = dedent(f"""{prompt}
-    Reply with a JSON array like this:
-    {{"redactions": ["phrase1", "phrase2", "phrase3"]}}
-    The array can be empty. The phrases must be exact matches. Do NOT wrap the JSON array in a code environment or any other text.
+    combined_text = "\n\n".join(all_pages_text)
+
+    full_prompt = dedent(f"""
+    You are a document redaction bot that assists in the process of publishing documents according to freedom of information laws. Generally your task is to redact personal and personally identifiable information. The user can also give you a more specific task. Here is what the user has asked you to do:
+    {prompt}
+    You will be given document text from a PDF, split into pages, and your task is to reply with phrases that should be redacted. When in doubt, err on the side of keeping things unredacted – the user can always manually redact things later.
+    Reply with one phrase per line in this format:
+    phrase1|1
+    phrase2|2
+    Where the number after | is the page number. Only output exact matches. No other text.
     
     Text to analyze:
-                    
-    {page_text}""")
+    
+    {combined_text}""")
 
-    response = await acompletion(
-        model="azure/gpt-4o-mini",
-        messages=[{"role": "user", "content": full_prompt}],
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        api_base=os.getenv("AZURE_OPENAI_API_BASE"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
-        response_format={"type": "json_object"},
-        temperature=0,
-    )
+    def generate():
+        yield 'data: {"status": "started"}\n\n'
 
-    # Parse response and search for each phrase
-    sensitive_phrases = response.choices[0].message.content.strip()
-    sensitive_phrases = json.loads(sensitive_phrases)["redactions"]
-    print(sensitive_phrases)
-    page_results = []
+        buffer = []
 
-    for phrase in sensitive_phrases:
-        phrase = phrase.strip()
-        if phrase:  # Skip empty lines
-            matches = page.search_for(phrase)
-            if matches:
-                page_rect = page.rect
-                page_results.extend(
-                    [
-                        {
-                            "x0": rect[0],
-                            "y0": rect[1],
-                            "x1": rect[2],
-                            "y1": rect[3],
-                            "page_width": page_rect.width,
-                            "page_height": page_rect.height,
-                            "text": phrase,
-                        }
-                        for rect in matches
-                    ]
-                )
+        for chunk in completion(
+            model="azure/gpt-4o-mini",
+            messages=[{"role": "user", "content": full_prompt}],
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            api_base=os.getenv("AZURE_OPENAI_API_BASE"),
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
+            temperature=0,
+            stream=True,
+        ):
+            if not chunk.choices[0].delta.content:
+                continue
 
-    return str(page_num), page_results
+            print(chunk.choices[0].delta.content)
+            buffer.append(chunk.choices[0].delta.content)
+            text = "".join(buffer)
+
+            if "\n" in text:
+                lines = text.split("\n")
+                buffer = [lines[-1]]  # Keep incomplete line in buffer
+
+                for line in lines[:-1]:
+                    if not line.strip():
+                        continue
+
+                    try:
+                        phrase, page_num = line.strip().split("|")
+                        page_num = int(page_num)
+                        phrase = phrase.strip()
+
+                        if not phrase:
+                            continue
+
+                        page = doc[page_num - 1]
+                        matches = page.search_for(phrase)
+
+                        if matches:
+                            page_rect = page.rect
+                            for rect in matches:
+                                result = {
+                                    "x0": rect[0],
+                                    "y0": rect[1],
+                                    "x1": rect[2],
+                                    "y1": rect[3],
+                                    "page_width": page_rect.width,
+                                    "page_height": page_rect.height,
+                                    "text": phrase,
+                                    "page": page_num,
+                                }
+                                yield f"data: {json.dumps(result)}\n\n"
+                    except Exception as e:
+                        print(f"Error processing line: {line}", e)
+                        continue
+
+        yield 'data: {"status": "completed"}\n\n'
+
+    return generate
 
 
 @api_router.post("/analyze-pdf")
-async def analyze_pdf(file: UploadFile, prompt: str = Form(...)):
+def analyze_pdf(file: UploadFile, prompt: str = Form(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="File must be a PDF")
 
-    contents = await file.read()
+    contents = file.file.read()
     pdf_stream = io.BytesIO(contents)
     doc = pymupdf.open(stream=pdf_stream, filetype="pdf")
 
-    # Create tasks for all pages
-    tasks = [
-        process_page(page, page_num, prompt) for page_num, page in enumerate(doc, 1)
-    ]
-
-    # Process all pages in parallel
-    results_list = await asyncio.gather(*tasks)
-
-    # Convert results list to dictionary
-    results = {
-        page_num: page_results
-        for page_num, page_results in results_list
-        if page_results  # Only include pages with results
-    }
-
-    doc.close()
-    return results
+    return StreamingResponse(
+        process_pdf_streaming(doc, prompt)(), media_type="text/event-stream"
+    )
 
 
 @api_router.post("/save-annotations")
-async def save_annotations(
+def save_annotations(
     file: UploadFile = File(...),
     annotations: str = Form(...),
 ):
@@ -122,7 +147,7 @@ async def save_annotations(
     highlights = json.loads(annotations)
 
     # Read the PDF file
-    contents = await file.read()
+    contents = file.file.read()
     pdf_stream = io.BytesIO(contents)
     doc = pymupdf.open(stream=pdf_stream, filetype="pdf")
 
