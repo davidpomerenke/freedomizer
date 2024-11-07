@@ -9,6 +9,12 @@ export default defineConfig({
     plugins: [react()],
     server: {
         port: 3003,
+        proxy: {
+            '/api': {
+                target: 'http://localhost:8000',
+                changeOrigin: true,
+            }
+        }
     },
     define: {
         APP_VERSION: JSON.stringify(process.env.npm_package_version),

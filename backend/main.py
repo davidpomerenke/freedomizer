@@ -19,7 +19,7 @@ api_router = APIRouter()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3003", "http://127.0.0.1:3003"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -161,8 +161,9 @@ async def save_annotations(
 # Include the router with prefix
 app.include_router(api_router, prefix="/api")
 
-# Mount static files (built frontend) last
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+# Only mount static files if the directory exists (production mode)
+if os.path.exists("static"):
+    app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
