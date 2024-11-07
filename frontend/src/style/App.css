@@ -24,14 +24,14 @@ body {
   }
   
   .sidebar__highlights {
-    list-style: "none";
+    list-style: none;
     padding: 0;
+    margin: 0;
   }
   
   .highlight__location {
-    margin-top: 0.5rem;
-    text-align: right;
     font-size: 10px;
+    color: #666;
   }
   
   .highlight__image {
@@ -41,7 +41,7 @@ body {
   }
   
   .sidebar__highlight {
-    padding: 1rem;
+    padding: 0.5rem;
     cursor: pointer;
     transition: background 140ms ease-in;
     border-bottom: 1px solid rgb(119, 119, 119);
@@ -58,13 +58,9 @@ body {
   blockquote {
     padding: 0;
     margin: 0;
-    quotes: "\201c" "\201d";
-  }
-  blockquote:before {
-    content: open-quote;
-  }
-  blockquote:after {
-    content: close-quote;
+    font-size: 0.8rem;
+    line-height: 1.2;
+    color: #444;
   }
   
   .spinner-small {

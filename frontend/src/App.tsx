@@ -239,7 +239,7 @@ export function App() {
                             }],
                             pageNumber: data.page
                         },
-                        comment: { text: "AI Generated", emoji: "🤖" },
+                        comment: { text: "", emoji: "" },
                         id: String(Math.random()).slice(2)
                     };
 
@@ -292,12 +292,13 @@ export function App() {
                       scrollToHighlightFromHash();
                     }
                   }}
-                  onSelectionFinished={(position, content) => {
+                  onSelectionFinished={(position, content, hideTipAndSelection, transformSelection) => {
                     addHighlight({
                       content,
                       position,
-                      comment: { text: "", emoji: "✋" }
+                      comment: { text: "", emoji: "" }
                     });
+                    return null;
                   }}
                   highlightTransform={(
                     highlight,

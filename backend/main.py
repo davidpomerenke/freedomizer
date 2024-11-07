@@ -63,6 +63,9 @@ def process_pdf_streaming(doc, prompt):
     - REDACT must use exact character matches (500000 ≠ 500.000 €)
     - Specify PAGE only when switching to a different page
     - Each REDACT must follow a CONSIDER and ANALYZE
+                         
+    The following is an example for generically redacting sensitive information.
+    The user may ask you to redact different types of information, so you must be flexible.
 
     ===== EXAMPLE START =====
 

@@ -329,31 +329,33 @@ export function Sidebar({
               key={highlight.id}
               className="sidebar__highlight"
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
                 <div
                   style={{ flex: 1, cursor: 'pointer' }}
                   onClick={() => {
                     updateHash(highlight);
                   }}
                 >
-                  <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px' }}>
                     {highlight.content.text ? (
-                      <blockquote style={{ marginTop: "0.5rem" }}>
-                        {`${highlight.content.text.slice(0, 90).trim()}…`}
+                      <blockquote style={{ flex: 1 }}>
+                        {highlight.content.text.length > 60
+                          ? `${highlight.content.text.slice(0, 60).trim()}…`
+                          : highlight.content.text.trim()}
                       </blockquote>
                     ) : null}
-                    {highlight.content.image ? (
-                      <div
-                        className="highlight__image"
-                        style={{ marginTop: "0.5rem" }}
-                      >
-                        <img src={highlight.content.image} alt={"Screenshot"} />
-                      </div>
-                    ) : null}
+                    <div className="highlight__location" style={{ whiteSpace: 'nowrap' }}>
+                      Page {highlight.position.pageNumber}
+                    </div>
                   </div>
-                  <div className="highlight__location">
-                    Page {highlight.position.pageNumber}
-                  </div>
+                  {highlight.content.image ? (
+                    <div
+                      className="highlight__image"
+                      style={{ marginTop: "0.25rem" }}
+                    >
+                      <img src={highlight.content.image} alt={"Screenshot"} />
+                    </div>
+                  ) : null}
                 </div>
                 <button
                   onClick={() => onDeleteHighlight?.(highlight.id)}
@@ -361,14 +363,14 @@ export function Sidebar({
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    fontSize: '16px',
-                    padding: '4px 8px',
+                    fontSize: '14px',
+                    padding: '0 4px',
                     color: '#666',
-                    marginLeft: '8px'
+                    lineHeight: 1
                   }}
                   title="Remove redaction"
                 >
-                  x
+                  ×
                 </button>
               </div>
             </li>
