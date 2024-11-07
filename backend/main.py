@@ -42,64 +42,76 @@ def process_pdf_streaming(doc, prompt):
         all_pages_text.append(f"=== PAGE {page_num} ===\n{page_text}")
 
     combined_text = "\n\n".join(all_pages_text)
-    print(combined_text)
 
     full_prompt = dedent(f"""
-    You are a document redaction bot. For each potentially sensitive item, follow these exact steps:
+    You are a document redaction bot. Follow this exact process:
 
-    1. CONTEXT: "..." (quote the sensitive phrase within its surrounding text)
-    2. ANALYSIS: Explain why this might or might not need redaction
-    3. DECISION: Write either SKIP or REDACT
-    4. PAGE: Specify the page number
-    5. OCCURRENCE INFO: Explain how many exact matches exist and which one you're targeting
-    6. OCCURRENCE: Specify which occurrence number (counting only exact matches)
-    7. EXACT: "..." (the exact characters to be redacted, in quotes)
+    At the start of the document and each new page:
+    THINK: Analyze the overall content, identify patterns and types of sensitive information present.
+    Make high-level decisions based on concrete examples you see.
+
+    For each potentially sensitive item:
+    1. CONSIDER: Quote the sensitive phrase with its surrounding context: "..."
+    2. ANALYZE: Explain why this information might need protection
+    3. REDACT: "..." (optional, exact characters to be redacted)
+       You can have 0, 1, or multiple REDACT commands after each analysis
+
+    When moving to a new page:
+    PAGE: Specify the new page number
 
     Important:
-    - Count only EXACT matches (500000 ≠ 500.000 €)
-    - Start fresh counting on each page
-    - Use the exact characters you found, don't modify them
+    - REDACT must use exact character matches (500000 ≠ 500.000 €)
+    - Specify PAGE only when switching to a different page
+    - Each REDACT must follow a CONSIDER and ANALYZE
 
-    Example 1 (public financial info):
-    CONTEXT: "The project has an estimated market value: 500.000 € according to experts"
-    ANALYSIS: This is public market information that's important for transparency
-    DECISION: SKIP
+    ===== EXAMPLE START =====
 
-    Example 2 (private financial info):
-    CONTEXT: "Mr. Schmidt's personal loan amount: 500.000 € was approved"
-    ANALYSIS: This reveals private financial information about an individual
-    DECISION: REDACT
+    THINK: After reviewing the entire document, I observe this appears to be a financial report 
+    containing sensitive information across multiple pages. The document contains:
+    1. Employee personal data (emails, phone numbers, IDs)
+    2. Internal financial information
+    3. Project codes and identifiers
+    4. Performance metrics
+    The redaction strategy should protect individual privacy while maintaining transparency 
+    for public-facing information.
+
+    PAGE: 1
+
+    THINK: On this first page, I notice it contains primarily employee contact details 
+    and departmental budget information. Key patterns include:
+    1. Personal email addresses and phone numbers
+    2. Department-level financial figures
+    3. Public contact information that should be preserved
+
+    CONSIDER: "For inquiries, contact our support team at support@company.com or visit www.company.com"
+    ANALYZE: These are public-facing contact methods intended for customer communication
+    
+    CONSIDER: "Project lead: Sarah Chen (sarah.chen@company.com), Direct: +1-555-0123"
+    ANALYZE: This contains personal contact information of an employee
+    REDACT: "sarah.chen@company.com"
+    REDACT: "+1-555-0123"
+
+    CONSIDER: "Department budget allocation: $1,500,000"
+    ANALYZE: This is high-level financial information that should be public for transparency
+
     PAGE: 2
-    OCCURRENCE INFO: Found exactly one match of "500.000" on this page
-    OCCURRENCE: 1
-    EXACT: "500.000"
 
-    Example 3 (name with variations):
-    CONTEXT: "Report by Dr. Jane Smith... reviewed by J. Smith... Approved by: Jane Smith"
-    ANALYSIS: This is a person's name appearing in an official capacity
-    DECISION: REDACT
-    PAGE: 3
-    OCCURRENCE INFO: Found "Jane Smith" twice on this page (ignoring "Dr. Jane Smith" and "J. Smith")
-    OCCURRENCE: 2
-    EXACT: "Jane Smith"
+    THINK: This page focuses on employee performance data and project details. Key patterns include:
+    1. Employee IDs followed by salary figures
+    2. Project codes in format PRJ-####
+    3. Performance review scores
 
-    Example 4 (email in different contexts):
-    CONTEXT: "Contact support@company.com for general inquiries... private user: john.doe@company.com"
-    ANALYSIS: The support email is public, but the personal email needs protection
-    DECISION: REDACT
-    PAGE: 1
-    OCCURRENCE INFO: Found "john.doe@company.com" once on this page
-    OCCURRENCE: 1
-    EXACT: "john.doe@company.com"
+    CONSIDER: "Employee ID: A123 | Annual Compensation: $95,000 | Performance: 4.5/5"
+    ANALYZE: This reveals detailed personal employment information
+    REDACT: "A123"
+    REDACT: "$95,000"
+    REDACT: "4.5/5"
 
-    Example 5 (ID number with context):
-    CONTEXT: "Project ID: PRJ-2023-45... Employee ID: 7845-0991"
-    ANALYSIS: Project IDs are public references, but employee IDs are personal identifiers
-    DECISION: REDACT
-    PAGE: 1
-    OCCURRENCE INFO: Found "7845-0991" once on this page
-    OCCURRENCE: 1
-    EXACT: "7845-0991"
+    CONSIDER: "Project PRJ-5421 status: ON_TRACK | Budget remaining: $50,000"
+    ANALYZE: The project code and status are internal identifiers that should be protected
+    REDACT: "PRJ-5421"
+
+    ===== EXAMPLE END =====
 
     Here is what the user has asked you to do:
     "{prompt}"
@@ -111,13 +123,10 @@ def process_pdf_streaming(doc, prompt):
         yield 'data: {"status": "started"}\n\n'
 
         buffer = []
-        current_analysis = None
         current_page = None
-        current_occurrence = None
-        current_exact = None
 
         for chunk in completion(
-            model="azure/gpt-4o",
+            model="azure/gpt-4o-mini",
             messages=[{"role": "user", "content": full_prompt}],
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
             api_base=os.getenv("AZURE_OPENAI_API_BASE"),
@@ -141,59 +150,37 @@ def process_pdf_streaming(doc, prompt):
                     if not line:
                         continue
 
-                    elif line.startswith("ANALYSIS:"):
-                        current_analysis = line[9:].strip()
-                    elif line.startswith("DECISION: SKIP"):
-                        # Reset without emitting anything
-                        current_analysis = None
-                        current_page = None
-                        current_occurrence = None
-                        current_exact = None
                     elif line.startswith("PAGE:"):
                         current_page = int(line[5:].strip())
-                    elif line.startswith("OCCURRENCE:"):
-                        current_occurrence = int(line[11:].strip())
-                    elif line.startswith('EXACT: "'):
-                        # Extract text between quotes
-                        current_exact = line[7:].strip().strip('"')
-
-                        # If we have all necessary information, process the redaction
-                        if all(
-                            [
-                                current_exact,
-                                current_page,
-                                current_occurrence,
-                                current_analysis,
-                            ]
-                        ):
+                    elif line.startswith('REDACT: "'):
+                        redact_text = line[8:].strip().strip('"')
+                        if current_page and redact_text:
                             try:
                                 page = doc[current_page - 1]
-                                matches = page.search_for(current_exact)
+                                matches = page.search_for(redact_text)
 
-                                if matches and 0 < current_occurrence <= len(matches):
-                                    rect = matches[current_occurrence - 1]
-                                    page_rect = page.rect
-                                    result = {
-                                        "x0": rect[0],
-                                        "y0": rect[1],
-                                        "x1": rect[2],
-                                        "y1": rect[3],
-                                        "page_width": page_rect.width,
-                                        "page_height": page_rect.height,
-                                        "text": current_exact,
-                                        "page": current_page,
-                                        "comment": current_analysis,
-                                    }
-                                    yield f"data: {json.dumps(result)}\n\n"
+                                if matches:
+                                    if len(matches) > 1:
+                                        print(
+                                            f"Warning: Multiple matches ({len(matches)}) found for '{redact_text}' on page {current_page}"
+                                        )
+                                        # TODO: make a separate prompt to identify the correct match
+                                    for rect in matches:
+                                        page_rect = page.rect
+                                        result = {
+                                            "x0": rect[0],
+                                            "y0": rect[1],
+                                            "x1": rect[2],
+                                            "y1": rect[3],
+                                            "page_width": page_rect.width,
+                                            "page_height": page_rect.height,
+                                            "text": redact_text,
+                                            "page": current_page,
+                                        }
+                                        yield f"data: {json.dumps(result)}\n\n"
 
                             except Exception as e:
                                 print(f"Error processing redaction: {e}")
-
-                            # Reset after processing
-                            current_analysis = None
-                            current_page = None
-                            current_occurrence = None
-                            current_exact = None
 
         yield 'data: {"status": "completed"}\n\n'
 
