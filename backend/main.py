@@ -204,54 +204,6 @@ def analyze_pdf(file: UploadFile, prompt: str = Form(...)):
     )
 
 
-@api_router.post("/save-annotations")
-def save_annotations(
-    file: UploadFile = File(...),
-    annotations: str = Form(...),
-):
-    if not file.filename.endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="File must be a PDF")
-
-    # Parse the annotations JSON string
-    highlights = json.loads(annotations)
-
-    # Read the PDF file
-    contents = file.file.read()
-    pdf_stream = io.BytesIO(contents)
-    doc = pymupdf.open(stream=pdf_stream, filetype="pdf")
-
-    # Process each highlight as a redaction
-    for highlight in highlights:
-        page = doc[highlight["position"]["pageNumber"] - 1]  # 0-based index
-        rect = highlight["position"]["boundingRect"]
-
-        # Create redaction annotation
-        page.add_redact_annot(
-            quad=[rect["x1"], rect["y1"], rect["x2"], rect["y2"]], fill=(1, 0.41, 0.71)
-        )
-
-        # Apply the redaction
-        page.apply_redactions()
-
-    # Save the redacted PDF
-    output = io.BytesIO()
-    doc.save(output)
-    doc.close()
-
-    # Create a safe filename by removing problematic characters
-    safe_filename = "".join(
-        c for c in file.filename if c.isalnum() or c in ("-", "_", ".")
-    )
-
-    return Response(
-        content=output.getvalue(),
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": f"attachment; filename=redacted_{safe_filename}"
-        },
-    )
-
-
 # Include the router with prefix
 app.include_router(api_router, prefix="/api")
 

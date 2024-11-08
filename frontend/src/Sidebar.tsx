@@ -1,5 +1,6 @@
 import type { IHighlight } from "react-pdf-highlighter";
 import React, { useState } from "react";
+import { saveAnnotations } from "./utils/pdfUtils";
 
 interface Props {
   highlights: Array<IHighlight>;
@@ -116,47 +117,20 @@ export function Sidebar({
     }
 
     try {
-      const formData = new FormData();
-      formData.append('file', currentPdfFile);
-
-      // Transform highlights back to PyMuPDF coordinate system
-      const transformedHighlights = highlights.map(h => {
-        return {
-          ...h,
-          position: {
-            ...h.position,
-            boundingRect: {
-              ...h.position.boundingRect,
-              // Convert back to PyMuPDF coordinates
-              y1: h.position.boundingRect.y1,
-              y2: h.position.boundingRect.y2
-            }
+      // Transform highlights to match the format needed
+      const transformedHighlights = highlights.map(h => ({
+        ...h,
+        position: {
+          ...h.position,
+          boundingRect: {
+            ...h.position.boundingRect,
+            y1: h.position.boundingRect.y1,
+            y2: h.position.boundingRect.y2
           }
-        };
-      });
+        }
+      }));
 
-      formData.append('annotations', JSON.stringify(transformedHighlights));
-
-      const response = await fetch('/api/save-annotations', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save annotations');
-      }
-
-      // Download the annotated PDF
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `annotated_${currentPdfFile.name}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
+      await saveAnnotations(currentPdfFile, transformedHighlights);
     } catch (error) {
       console.error('Error saving annotations:', error);
       alert('Failed to save annotations');

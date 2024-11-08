@@ -11,6 +11,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "mupdf-js": "^2.0.1",
     "react-pdf-highlighter": "^8.0.0-rc.0"
   },
   "devDependencies": {
