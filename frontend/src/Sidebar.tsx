@@ -1,14 +1,13 @@
 import type { IHighlight } from "react-pdf-highlighter";
-import React, { useState } from "react";
-import { saveAnnotations } from "./utils/pdfUtils";
+import React, { useState, useEffect } from "react";
+import { useMupdf } from './hooks/useMuPdf'
+import { saveAnnotations } from "./pdfUtils";
 
 interface Props {
   highlights: Array<IHighlight>;
   resetHighlights: () => void;
-  toggleDocument: () => void;
   onFileUpload: (fileUrl: string, file: File) => void;
   onDeleteHighlight?: (id: string) => void;
-  onBackendHighlights: (highlights: Array<IHighlight>) => void;
   currentPdfFile: File | null;
   customPrompt: string;
   setCustomPrompt: (prompt: string) => void;
@@ -30,7 +29,6 @@ export function Sidebar({
   resetHighlights,
   onFileUpload,
   onDeleteHighlight,
-  onBackendHighlights,
   currentPdfFile,
   customPrompt,
   setCustomPrompt,
@@ -38,67 +36,40 @@ export function Sidebar({
   isAnalyzing,
 }: Props) {
 
+  const { workerInitialized, loadDocument, renderPage } = useMupdf()
+  const [mupdfImageUrl, setMupdfImageUrl] = useState<string | null>(null)
+  const [pdfSaveRequested, setPdfSaveRequested] = useState(false)
+
+  useEffect(() => {
+    if (workerInitialized) {
+      loadPdf()
+    }
+  }, [workerInitialized, currentPdfFile])
+
+  useEffect(() => {
+    if (workerInitialized && pdfSaveRequested) {
+      handleSave()
+    }
+  }, [workerInitialized, pdfSaveRequested])
+
+  const loadPdf = async () => {
+    try {
+      if (!currentPdfFile) return
+      await loadDocument(await currentPdfFile.arrayBuffer())
+      const pngData = await renderPage(0)
+      setMupdfImageUrl(URL.createObjectURL(new Blob([pngData], { type: 'image/png' })))
+    } catch (error) {
+      console.error('Error loading PDF:', error)
+    }
+  }
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const fileUrl = URL.createObjectURL(file);
       onFileUpload(fileUrl, file);
-
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const response = await fetch('/api/analyze-pdf', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to analyze PDF');
-        }
-
-        const analysisResult = await response.json();
-        console.log("analysisResult", analysisResult);
-
-        // Convert backend highlights to frontend format
-        const convertedHighlights = Object.entries(analysisResult).flatMap(
-          ([pageNum, highlights]: [string, any[]]) =>
-            highlights.map((h: any) => {
-              return {
-                content: {
-                  text: h.text || ''
-                },
-                position: {
-                  boundingRect: {
-                    x1: h.x0,
-                    y1: h.y0,
-                    x2: h.x1,
-                    y2: h.y1,
-                    width: h.page_width,
-                    height: h.page_height,
-                  },
-                  rects: [{
-                    x1: h.x0,
-                    y1: h.y0,
-                    x2: h.x1,
-                    y2: h.y1,
-                    width: h.page_width,
-                    height: h.page_height,
-                  }],
-                  pageNumber: parseInt(pageNum)
-                },
-                comment: { text: "AI Generated", emoji: "🤖" },
-                id: String(Math.random()).slice(2)
-              };
-            })
-        );
-
-        onBackendHighlights(convertedHighlights);
-      } catch (error) {
-        console.error('Error analyzing PDF:', error);
-      }
     }
-  };
+  }
 
   const sortedHighlights = [...highlights].sort((a, b) => {
     // First sort by page number
@@ -285,7 +256,7 @@ export function Sidebar({
         )}
         {highlights.length > 0 && currentPdfFile && (
           <button
-            onClick={handleSave}
+            onClick={() => setPdfSaveRequested(true)}
             style={{
               marginBottom: "1rem",
               padding: "0.5rem",
@@ -355,6 +326,7 @@ export function Sidebar({
           No redactions yet
         </div>
       )}
+      {mupdfImageUrl && <img src={mupdfImageUrl} alt="PDF page" />}
     </div>
   );
 }
