@@ -8,7 +8,7 @@ import type { NewHighlight, Scaled } from "react-pdf-highlighter";
 import { REGEX_PATTERNS } from "./entityTypes";
 
 function findRegexEntities(text: string, entities: any[]) {
-	// Find regex-based entities
+	// First find regex-based entities
 	for (const [type, pattern] of Object.entries(REGEX_PATTERNS)) {
 		let match;
 		while ((match = pattern.exec(text)) !== null) {
@@ -19,6 +19,35 @@ function findRegexEntities(text: string, entities: any[]) {
 				startIndex: match.index,
 				endIndex: match.index + match[0].length,
 			});
+		}
+	}
+
+	// Then look for numbers adjacent to locations
+	const locationEntities = entities.filter((e) => e.type === "LOC");
+	for (const locEntity of locationEntities) {
+		const beforeText = text.slice(
+			Math.max(0, locEntity.startIndex - 20),
+			locEntity.startIndex,
+		);
+		const afterText = text.slice(
+			locEntity.endIndex,
+			Math.min(text.length, locEntity.endIndex + 20),
+		);
+
+		// Check for numbers before or after the location
+		const numberBefore = /(\d+)\s*$/.exec(beforeText);
+		const numberAfter = /^\s*(\d+)/.exec(afterText);
+
+		if (numberBefore) {
+			const extension = numberBefore[0];
+			locEntity.text = extension + locEntity.text;
+			locEntity.startIndex -= extension.length;
+		}
+
+		if (numberAfter) {
+			const extension = numberAfter[0];
+			locEntity.text = locEntity.text + extension;
+			locEntity.endIndex += extension.length;
 		}
 	}
 }
@@ -101,7 +130,6 @@ function processTokenClassificationOutput(
 	findRegexEntities(originalText, entities);
 
 	// Sort entities by start position
-	console.log(entities);
 	return entities.sort((a, b) => a.startIndex - b.startIndex);
 }
 
@@ -187,6 +215,7 @@ export async function analyzePdf(
 						emoji: "",
 					},
 					position: {
+						pageNumber: i + 1,
 						boundingRect: boundingRect,
 						rects: quads.map((quad) => ({
 							x1: quad[0],
@@ -216,9 +245,8 @@ export async function saveAnnotations(
 
 	// Process each highlight as a redaction
 	for (const highlight of highlights) {
-		const pageNumber = highlight.position.boundingRect.pageNumber - 1; // 0-based index
+		const pageNumber = highlight.position.pageNumber - 1; // 0-based index
 		const page = doc.loadPage(pageNumber);
-		const rect = highlight.position.boundingRect; // attributes: x1, x2, y1, y2, height, width, pageNumber
 		for (const rect of highlight.position.rects) {
 			// Create redaction annotation
 			const redaction = page.createAnnotation("Redact");

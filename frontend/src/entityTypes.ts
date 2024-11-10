@@ -145,8 +145,13 @@ const createDatePattern = () => {
 		nl: "jan(?:uari)?|feb(?:ruari)?|maart|apr(?:il)?|mei|jun(?:i)?|jul(?:i)?|aug(?:ustus)?|sep(?:tember)?|okt(?:ober)?|nov(?:ember)?|dec(?:ember)?",
 	};
 
-	// Combine all month names
 	const allMonthNames = Object.values(monthNames).join("|");
+
+	// Time pattern components
+	const timePattern =
+		"(?:(?:[01]?\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d)?(?:\\s*[AaPp][Mm])?|(?:[01]?\\d|2[0-3])\\s*[Uu][Hh][Rr])";
+	const timeZonePattern =
+		"(?:GMT|UTC|EST|EDT|CST|CDT|MST|MDT|PST|PDT|[+-]\\d{2}:?\\d{2}|[A-Z]{3,5})";
 
 	const patterns = [
 		// ISO dates (2024-03-14, 2024/03/14)
@@ -195,6 +200,29 @@ const createDatePattern = () => {
 
 		// Islamic date format
 		"\\b\\d{1,2}\\s+(?:Muharram|Safar|Rabi\\s*al-[aA]wwal|Rabi\\s*al-[tT]hani|Jumada\\s*al-[aA]wwal|Jumada\\s*al-[tT]hani|Rajab|Sha[']ban|Ramadan|Shawwal|Dhu\\s*al-[qQ]adah|Dhu\\s*al-[hH]ijjah)\\s+\\d{4}\\b",
+
+		// Time patterns
+		`\\b${timePattern}\\b`,
+		`\\b${timePattern}\\s*${timeZonePattern}\\b`,
+
+		// Date + Time combinations
+		// ISO format with time
+		"\\b\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2}[T ]\\d{2}:\\d{2}(?::\\d{2})?(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:?\\d{2})?\\b",
+
+		// European format with time
+		`\\b\\d{1,2}[-/.]\\d{1,2}[-/.]\\d{2,4}[,\\s]+${timePattern}\\b`,
+
+		// American format with time
+		`\\b\\d{1,2}/\\d{1,2}/\\d{2,4}[,\\s]+${timePattern}\\b`,
+
+		// Text format with time
+		`\\b(?:${allMonthNames})\\s+\\d{1,2}(?:st|nd|rd|th)?(?:[,\\s]+\\d{2,4})?[,\\s]+${timePattern}\\b`,
+
+		// Japanese format with time
+		`\\b\\d{4}年\\s*\\d{1,2}月\\s*\\d{1,2}日\\s*${timePattern}\\b`,
+
+		// 24-hour time ranges
+		`\\b${timePattern}\\s*[-–—~to]+\\s*${timePattern}\\b`,
 	];
 
 	return new RegExp(patterns.join("|"), "gi");

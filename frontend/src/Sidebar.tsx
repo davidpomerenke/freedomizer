@@ -333,7 +333,7 @@ export function Sidebar({
 												className="highlight__location"
 												style={{ whiteSpace: "nowrap" }}
 											>
-												Page {highlight.position.boundingRect.pageNumber}
+												Page {highlight.position.pageNumber}
 											</div>
 										</div>
 										{highlight.content.image ? (
