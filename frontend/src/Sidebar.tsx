@@ -1,5 +1,6 @@
 import type { IHighlight } from 'react-pdf-highlighter'
-import { saveAnnotations } from './pdfUtils'
+import { saveAnnotations, analyzePdf } from './pdfUtils'
+import { useState } from 'react'
 
 interface Props {
   highlights: Array<IHighlight>
@@ -7,19 +8,10 @@ interface Props {
   onFileUpload: (fileUrl: string, file: File) => void
   onDeleteHighlight?: (id: string) => void
   currentPdfFile: File | null
-  customPrompt: string
-  setCustomPrompt: (prompt: string) => void
-  onAnalyzePdf: () => void
-  isAnalyzing: boolean
 }
 
 const updateHash = (highlight: IHighlight) => {
   document.location.hash = `highlight-${highlight.id}`
-}
-
-const adjustTextareaHeight = (element: HTMLTextAreaElement) => {
-  element.style.height = 'auto'
-  element.style.height = element.scrollHeight + 'px'
 }
 
 export function Sidebar ({
@@ -27,12 +19,9 @@ export function Sidebar ({
   resetHighlights,
   onFileUpload,
   onDeleteHighlight,
-  currentPdfFile,
-  customPrompt,
-  setCustomPrompt,
-  onAnalyzePdf,
-  isAnalyzing
+  currentPdfFile
 }: Props) {
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -79,6 +68,19 @@ export function Sidebar ({
     } catch (error) {
       console.error('Error saving annotations:', error)
       alert('Failed to save annotations')
+    }
+  }
+
+  const handleAnalyzePdf = async () => {
+    if (!currentPdfFile) return
+
+    setIsAnalyzing(true)
+    try {
+      await analyzePdf(currentPdfFile)
+    } catch (error) {
+      console.error('Error analyzing PDF:', error)
+    } finally {
+      setIsAnalyzing(false)
     }
   }
 
@@ -140,52 +142,9 @@ export function Sidebar ({
 
         {currentPdfFile && (
           <div style={{ marginBottom: '1rem' }}>
-            <label
-              htmlFor='prompt-input'
-              style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                color: '#333',
-                fontSize: '0.9rem',
-                fontFamily:
-                  "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-              }}
-            >
-              AI Redaction Prompt:
-            </label>
-            <textarea
-              id='prompt-input'
-              value={customPrompt}
-              onChange={e => {
-                setCustomPrompt(e.target.value)
-                adjustTextareaHeight(e.target)
-              }}
-              onFocus={e => adjustTextareaHeight(e.target)}
-              onKeyDown={e => {
-                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                  e.preventDefault()
-                  if (!isAnalyzing) {
-                    onAnalyzePdf()
-                  }
-                }
-              }}
-              style={{
-                width: '100%',
-                minHeight: '70px',
-                marginBottom: '0.5rem',
-                padding: '0.5rem',
-                fontSize: '0.7rem',
-                fontFamily: "Monaco, Consolas, 'Courier New', monospace",
-                lineHeight: '1.4',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                resize: 'none',
-                boxSizing: 'border-box',
-                overflow: 'hidden'
-              }}
-            />
+            
             <button
-              onClick={onAnalyzePdf}
+              onClick={handleAnalyzePdf}
               disabled={isAnalyzing}
               style={{
                 marginBottom: '1rem',
