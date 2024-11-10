@@ -5,90 +5,122 @@ import {
 	type TokenClassificationOutput,
 } from "@huggingface/transformers";
 import type { NewHighlight, Scaled } from "react-pdf-highlighter";
+import { REGEX_PATTERNS } from "./entityTypes";
 
-function processTokenClassificationOutput(output: TokenClassificationOutput, originalText: string) {
-    const entities: any[] = [];
-    let currentEntity = null;
-    
-    for (const token of output) {
-        const cleanWord = token.word.replace("##", "");
-        
-        if (token.entity === "O") {
-            if (currentEntity) {
-                findAndAddEntity(currentEntity, originalText, entities);
-                currentEntity = null;
-            }
-            continue;
-        }
+function findRegexEntities(text: string, entities: any[]) {
+	// Find regex-based entities
+	for (const [type, pattern] of Object.entries(REGEX_PATTERNS)) {
+		let match;
+		while ((match = pattern.exec(text)) !== null) {
+			entities.push({
+				text: match[0],
+				type,
+				score: 1,
+				startIndex: match.index,
+				endIndex: match.index + match[0].length,
+			});
+		}
+	}
+}
 
-        if (token.entity.startsWith("B-")) {
-            if (currentEntity) {
-                findAndAddEntity(currentEntity, originalText, entities);
-            }
-            currentEntity = {
-                text: cleanWord,
-                type: token.entity.slice(2),
-                score: token.score,
-                words: [cleanWord],
-                rawWords: [token.word]  // Keep original tokens for reference
-            };
-        } else if (token.entity.startsWith("I-") && currentEntity) {
-            currentEntity.words.push(cleanWord);
-            currentEntity.rawWords.push(token.word);
-            
-            // Try different text reconstruction strategies
-            const reconstructions = [
-                // Direct join of clean words
-                currentEntity.words.join(''),
-                // Join with spaces
-                currentEntity.words.join(' '),
-                // Smart join (combine ##-prefixed tokens without spaces)
-                currentEntity.rawWords.reduce((text, word, i) => {
-                    if (i === 0) return word;
-                    return text + (word.startsWith("##") ? word.slice(2) : " " + word);
-                }, ""),
-                // Progressive join (try to find longest matching substring)
-                currentEntity.words.reduce((text, word) => {
-                    const combined = text + word;
-                    const combinedWithSpace = text + " " + word;
-                    if (originalText.includes(combined)) return combined;
-                    if (originalText.includes(combinedWithSpace)) return combinedWithSpace;
-                    return text;
-                }, currentEntity.words[0])
-            ];
+function processTokenClassificationOutput(
+	output: TokenClassificationOutput,
+	originalText: string,
+) {
+	const entities: any[] = [];
+	let currentEntity = null;
 
-            // Find the longest matching reconstruction
-            for (const reconstruction of reconstructions) {
-                if (originalText.includes(reconstruction) && 
-                    (!currentEntity.text || reconstruction.length > currentEntity.text.length)) {
-                    currentEntity.text = reconstruction;
-                }
-            }
-            
-            currentEntity.score = Math.min(currentEntity.score, token.score);
-        }
-    }
+	for (const token of output) {
+		const cleanWord = token.word.replace("##", "");
 
-    if (currentEntity) {
-        findAndAddEntity(currentEntity, originalText, entities);
-    }
+		if (token.entity === "O") {
+			if (currentEntity) {
+				findAndAddEntity(currentEntity, originalText, entities);
+				currentEntity = null;
+			}
+			continue;
+		}
 
-    return entities;
+		if (token.entity.startsWith("B-")) {
+			if (currentEntity) {
+				findAndAddEntity(currentEntity, originalText, entities);
+			}
+			currentEntity = {
+				text: cleanWord,
+				type: token.entity.slice(2),
+				score: token.score,
+				words: [cleanWord],
+				rawWords: [token.word], // Keep original tokens for reference
+			};
+		} else if (token.entity.startsWith("I-") && currentEntity) {
+			currentEntity.words.push(cleanWord);
+			currentEntity.rawWords.push(token.word);
+
+			// Try different text reconstruction strategies
+			const reconstructions = [
+				// Direct join of clean words
+				currentEntity.words.join(""),
+				// Join with spaces
+				currentEntity.words.join(" "),
+				// Smart join (combine ##-prefixed tokens without spaces)
+				currentEntity.rawWords.reduce((text, word, i) => {
+					if (i === 0) return word;
+					return text + (word.startsWith("##") ? word.slice(2) : " " + word);
+				}, ""),
+				// Progressive join (try to find longest matching substring)
+				currentEntity.words.reduce((text, word) => {
+					const combined = text + word;
+					const combinedWithSpace = text + " " + word;
+					if (originalText.includes(combined)) return combined;
+					if (originalText.includes(combinedWithSpace))
+						return combinedWithSpace;
+					return text;
+				}, currentEntity.words[0]),
+			];
+
+			// Find the longest matching reconstruction
+			for (const reconstruction of reconstructions) {
+				if (
+					originalText.includes(reconstruction) &&
+					(!currentEntity.text ||
+						reconstruction.length > currentEntity.text.length)
+				) {
+					currentEntity.text = reconstruction;
+				}
+			}
+
+			currentEntity.score = Math.min(currentEntity.score, token.score);
+		}
+	}
+
+	if (currentEntity) {
+		findAndAddEntity(currentEntity, originalText, entities);
+	}
+
+	// Add regex-based entities
+	findRegexEntities(originalText, entities);
+
+	// Sort entities by start position
+	console.log(entities);
+	return entities.sort((a, b) => a.startIndex - b.startIndex);
 }
 
 function findAndAddEntity(entity: any, originalText: string, entities: any[]) {
-    if (!entity.text) return;
-    
-    // Find the complete entity in the original text
-    const startPos = originalText.indexOf(entity.text);
-    if (startPos !== -1) {
-        entity.startIndex = startPos;
-        entity.endIndex = startPos + entity.text.length;
-        entities.push(entity);
-    }
+	if (!entity.text) return;
+
+	// Find the complete entity in the original text
+	const startPos = originalText.indexOf(entity.text);
+	if (startPos !== -1) {
+		entity.startIndex = startPos;
+		entity.endIndex = startPos + entity.text.length;
+		entities.push(entity);
+	}
 }
 
-export async function analyzePdf(file: File) {
+export async function analyzePdf(
+	file: File,
+	onPageProcessed: (highlights: NewHighlight[]) => void,
+) {
 	const fileBuffer = await file.arrayBuffer();
 	const doc = new PDFDocument(fileBuffer);
 
@@ -96,7 +128,6 @@ export async function analyzePdf(file: File) {
 		doc.loadPage(i).toStructuredText(),
 	);
 	const text = structuredText.map((st) => st.asText());
-	// set device to webgpu if available, see https://huggingface.co/docs/transformers.js/en/guides/webgpu
 	const model = "Xenova/bert-base-multilingual-cased-ner-hrl";
 	const device = (navigator as Navigator & { gpu?: unknown }).gpu
 		? "webgpu"
@@ -106,23 +137,23 @@ export async function analyzePdf(file: File) {
 		dtype: "fp16",
 	})) as TokenClassificationPipeline;
 
-	const highlights: Array<NewHighlight> = [];
+	// Process each page individually
 	for (const [i, pageText] of text.entries()) {
-		// measure time
 		const start = performance.now();
 		const output = (await classifier(pageText, {
 			ignore_labels: [],
 		})) as TokenClassificationOutput;
 		const end = performance.now();
 		console.log(`Time taken: ${end - start} milliseconds`);
-		console.log(output);
 
 		const entities = processTokenClassificationOutput(output, pageText);
 		const page = doc.loadPage(i);
 		const [_x, _y, pageWidth, pageHeight] = page.getBounds();
+
+		const pageHighlights: NewHighlight[] = [];
+
 		for (const entity of entities) {
 			const matches = page.search(entity.text);
-			// Convert quads to highlights
 			for (const quads of matches) {
 				// Combine all quads into a single bounding rect
 				const allXs = quads.flatMap((quad) => [
@@ -147,7 +178,7 @@ export async function analyzePdf(file: File) {
 					pageNumber: i + 1,
 				} as Scaled;
 
-				highlights.push({
+				pageHighlights.push({
 					content: {
 						text: entity.text,
 					},
@@ -170,8 +201,10 @@ export async function analyzePdf(file: File) {
 				} as NewHighlight);
 			}
 		}
+
+		// Send highlights for this page to the callback
+		onPageProcessed(pageHighlights);
 	}
-	return highlights;
 }
 
 export async function saveAnnotations(
@@ -183,18 +216,19 @@ export async function saveAnnotations(
 
 	// Process each highlight as a redaction
 	for (const highlight of highlights) {
-		const pageNumber = highlight.position.pageNumber - 1; // 0-based index
+		const pageNumber = highlight.position.boundingRect.pageNumber - 1; // 0-based index
 		const page = doc.loadPage(pageNumber);
 		const rect = highlight.position.boundingRect; // attributes: x1, x2, y1, y2, height, width, pageNumber
-
-		// Create redaction annotation
-		const redaction = page.createAnnotation("Redact");
-		redaction.setRect([rect.x1, rect.y1, rect.x2, rect.y2]);
-		// Create more colorful overlay (color does not work for redactions)
-		const overlay = page.createAnnotation("Square");
-		overlay.setRect([rect.x1, rect.y1, rect.x2, rect.y2]);
-		overlay.setInteriorColor([1, 0.41, 0.71]); // Pink color
-		overlay.setBorderWidth(0);
+		for (const rect of highlight.position.rects) {
+			// Create redaction annotation
+			const redaction = page.createAnnotation("Redact");
+			redaction.setRect([rect.x1, rect.y1, rect.x2, rect.y2]);
+			// Create more colorful overlay (color does not work for redactions)
+			const overlay = page.createAnnotation("Square");
+			overlay.setRect([rect.x1, rect.y1, rect.x2, rect.y2]);
+			overlay.setInteriorColor([1, 0.41, 0.71]); // Pink color
+			overlay.setBorderWidth(0);
+		}
 
 		// Apply the redaction
 		page.applyRedactions(0); // since we have our own overlays, we use 0 to remove the redacted content without adding black boxes
