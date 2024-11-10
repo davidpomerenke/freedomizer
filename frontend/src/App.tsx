@@ -229,6 +229,7 @@ function App () {
         onFileUpload={handleFileUpload}
         onDeleteHighlight={deleteHighlight}
         currentPdfFile={currentPdfFile}
+        addHighlight={addHighlight}
       />
 
       <div

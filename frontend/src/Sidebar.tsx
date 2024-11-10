@@ -8,6 +8,7 @@ interface Props {
   onFileUpload: (fileUrl: string, file: File) => void
   onDeleteHighlight?: (id: string) => void
   currentPdfFile: File | null
+  addHighlight: (highlight: IHighlight) => void
 }
 
 const updateHash = (highlight: IHighlight) => {
@@ -19,7 +20,8 @@ export function Sidebar ({
   resetHighlights,
   onFileUpload,
   onDeleteHighlight,
-  currentPdfFile
+  currentPdfFile,
+  addHighlight,
 }: Props) {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
 
@@ -51,20 +53,7 @@ export function Sidebar ({
     }
 
     try {
-      // Transform highlights to match the format needed
-      const transformedHighlights = highlights.map(h => ({
-        ...h,
-        position: {
-          ...h.position,
-          boundingRect: {
-            ...h.position.boundingRect,
-            y1: h.position.boundingRect.y1,
-            y2: h.position.boundingRect.y2
-          }
-        }
-      }))
-
-      await saveAnnotations(currentPdfFile, transformedHighlights)
+      await saveAnnotations(currentPdfFile, highlights)
     } catch (error) {
       console.error('Error saving annotations:', error)
       alert('Failed to save annotations')
@@ -76,7 +65,12 @@ export function Sidebar ({
 
     setIsAnalyzing(true)
     try {
-      await analyzePdf(currentPdfFile)
+      const newHighlights = await analyzePdf(currentPdfFile)
+      // Add IDs to the new highlights and add them to existing highlights
+      const highlightsWithIds = newHighlights.map(h => ({
+        ...h,
+        id: String(Math.random()).slice(2)
+      })).forEach(addHighlight)
     } catch (error) {
       console.error('Error analyzing PDF:', error)
     } finally {
