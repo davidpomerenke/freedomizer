@@ -2,42 +2,18 @@
 
 A tool for redacting sensitive information from PDF documents using AI assistance.
 
+Everything runs completely locally in your browser.
+
 ## Features
 
-- Upload and view PDF documents
-- AI-powered detection of sensitive information
-- Manual redaction by highlighting text
-- Export redacted PDFs
-
-## Setup
-
-1. Create a `.env` file with your Azure OpenAI credentials:
-
-```env
-AZURE_OPENAI_API_KEY=your_key
-AZURE_OPENAI_API_BASE=your_base_url
-AZURE_OPENAI_API_VERSION=your_version
-```
-
-2. Build and run with Docker:
-
-```bash
-docker build -t freedomizer .
-docker run -p 8000:8000 --env-file .env --rm freedomizer
-```
-
-Or run locally:
-
-```bash
-# Frontend
-cd frontend
-npm install
-npm start
-
-# Backend
-cd backend
-uv run uvicorn main:app --reload
-```
+- [x] [display and annotate PDFs](https://github.com/agentcooper/react-pdf-highlighter)
+- [x] [safely redact the PDF based on the annotations](https://github.com/ArtifexSoftware/mupdf.js)
+- [ ] [use AI to automatically detect personal information](https://github.com/huggingface/transformers.js)
+  - [ ] [based on named entity recognition](https://huggingface.co/Xenova/bert-base-multilingual-cased-ner-hrl)
+  - [ ] [based on chat models](https://huggingface.co/onnx-community/Qwen2.5-1.5B-Instruct;https://huggingface.co/onnx-community/Llama-3.2-1B-Instruct)
+  - [ ] [optionally connect to large language models](https://github.com/vllm-project/vllm)
+- [ ] [supports scanned PDFs](https://github.com/naptha/tesseract.js/)
+- [ ] [converts Word documents to PDF](https://github.com/georgestagg/pandoc-wasm)
 
 ## License
 
