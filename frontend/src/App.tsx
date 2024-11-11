@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 
 import {
 	AreaHighlight,
@@ -21,8 +21,10 @@ import "../node_modules/react-pdf-highlighter/dist/style.css";
 
 const getNextId = () => String(Math.random()).slice(2);
 
-const parseIdFromHash = () =>
-	document.location.hash.slice("#highlight-".length);
+const parseIdFromHash = () => {
+	const hash = document.location.hash;
+	return hash.slice(hash.indexOf("highlight-") + "highlight-".length);
+};
 
 const resetHash = () => {
 	document.location.hash = "";
@@ -42,27 +44,28 @@ function App() {
 
 	const scrollToHighlightFromHash = useCallback(() => {
 		const highlightId = parseIdFromHash();
+		console.log("highlightId", highlightId);
 		if (!highlightId) return;
 
 		const highlight = highlights.find((h) => h.id === highlightId);
+		console.log("highlight", highlight);
 		if (highlight) {
-			// Add a small delay to ensure the PDF is ready
 			setTimeout(() => {
 				scrollViewerTo.current(highlight);
 			}, 100);
 		}
 	}, [highlights]);
 
-	useEffect(() => {
-		window.addEventListener("hashchange", scrollToHighlightFromHash, false);
-		return () => {
-			window.removeEventListener(
-				"hashchange",
-				scrollToHighlightFromHash,
-				false,
-			);
-		};
-	}, [scrollToHighlightFromHash]);
+	// useEffect(() => {
+	// 	window.addEventListener("hashchange", scrollToHighlightFromHash, false);
+	// 	return () => {
+	// 		window.removeEventListener(
+	// 			"hashchange",
+	// 			scrollToHighlightFromHash,
+	// 			false,
+	// 		);
+	// 	};
+	// }, [scrollToHighlightFromHash]);
 
 	const addHighlight = (highlight: NewHighlight) => {
 		// PDF standard dimensions (A4)
@@ -144,18 +147,6 @@ function App() {
 		);
 	}, []);
 
-	const toggleEntityType = (type: string) => {
-		setFilteredTypes((prev) => {
-			const newSet = new Set(prev);
-			if (newSet.has(type)) {
-				newSet.delete(type);
-			} else {
-				newSet.add(type);
-			}
-			return newSet;
-		});
-	};
-
 	return (
 		<div className="App" style={{ display: "flex", height: "100vh" }}>
 			<Sidebar
@@ -196,8 +187,8 @@ function App() {
 									onSelectionFinished={(
 										position,
 										content,
-										hideTipAndSelection,
-										transformSelection,
+										_hideTipAndSelection,
+										_transformSelection,
 									) => {
 										addHighlight({
 											content,
@@ -208,9 +199,9 @@ function App() {
 									}}
 									highlightTransform={(
 										highlight,
-										index,
-										setTip,
-										hideTip,
+										_index,
+										_setTip,
+										_hideTip,
 										viewportToScaled,
 										screenshot,
 										isScrolledTo,

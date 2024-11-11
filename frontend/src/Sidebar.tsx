@@ -102,15 +102,13 @@ export function Sidebar({
 	);
 
 	const toggleEntityType = (type: string) => {
-		setFilteredTypes((prev) => {
-			const newSet = new Set(prev);
-			if (newSet.has(type)) {
-				newSet.delete(type);
-			} else {
-				newSet.add(type);
-			}
-			return newSet;
-		});
+		const newSet = new Set(filteredTypes);
+		if (newSet.has(type)) {
+			newSet.delete(type);
+		} else {
+			newSet.add(type);
+		}
+		setFilteredTypes(newSet);
 	};
 
 	return (
@@ -281,7 +279,7 @@ export function Sidebar({
 							const type = highlight.comment?.text?.split(" ")[0];
 							return filteredTypes.size === 0 || !filteredTypes.has(type);
 						})
-						.map((highlight, index) => (
+						.map((highlight, _index) => (
 							<li key={highlight.id} className="sidebar__highlight">
 								<div
 									style={{
