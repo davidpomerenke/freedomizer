@@ -209,6 +209,7 @@ function App() {
 										const isTextHighlight = !highlight.content?.image;
 
 										return isTextHighlight ? (
+											// biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
 											<div onClick={() => deleteHighlight(highlight.id)}>
 												<Highlight
 													isScrolledTo={isScrolledTo}
@@ -217,6 +218,7 @@ function App() {
 												/>
 											</div>
 										) : (
+											// biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
 											<div onClick={() => deleteHighlight(highlight.id)}>
 												<AreaHighlight
 													isScrolledTo={isScrolledTo}

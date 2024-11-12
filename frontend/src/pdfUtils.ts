@@ -9,7 +9,10 @@ import { REGEX_PATTERNS } from "./entityTypes";
 
 function findRegexEntities(text: string, entities: any[]) {
 	// First find regex-based entities
-	for (const [type, pattern] of Object.entries(REGEX_PATTERNS)) {
+	for (const [type, pattern] of Object.entries(REGEX_PATTERNS) as [
+		string,
+		RegExp,
+	][]) {
 		let match;
 		while ((match = pattern.exec(text)) !== null) {
 			entities.push({
