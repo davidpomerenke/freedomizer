@@ -1,5 +1,5 @@
 # Build stage for frontend
-FROM node:20-slim AS frontend-builder
+FROM --platform=linux/amd64 node:20-slim AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package.json .
 COPY frontend/tsconfig.json .
@@ -8,12 +8,16 @@ COPY frontend/ .
 RUN npm run build
 
 # Final stage
-FROM python:3.10-slim
+FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:python3.12-bookworm
 WORKDIR /app
 
 # Install Python dependencies
-COPY backend/pyproject.toml .
-RUN pip install --no-cache-dir ".[all]"
+COPY pyproject.toml .
+COPY uv.lock .
+RUN uv sync --frozen
+
+# Install spaCy model
+RUN python -m spacy download xx_ent_wiki_sm
 
 # Copy backend code
 COPY backend/ .
@@ -25,4 +29,4 @@ COPY --from=frontend-builder /app/frontend/dist /app/static
 EXPOSE 8000
 
 # Start the application
-CMD ["python", "main.py"] 
+CMD ["python", "main.py"]

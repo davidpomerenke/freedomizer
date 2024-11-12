@@ -74,6 +74,7 @@ export function Sidebar({
 
 		setIsAnalyzing(true);
 		try {
+			const useBackend = true;
 			await analyzePdf(currentPdfFile, (pageHighlights) => {
 				// Add IDs to the new highlights and add them
 				pageHighlights
@@ -82,7 +83,7 @@ export function Sidebar({
 						id: String(Math.random()).slice(2),
 					}))
 					.forEach(addHighlight);
-			});
+			}, useBackend);
 		} catch (error) {
 			console.error("Error analyzing PDF:", error);
 		} finally {
@@ -196,21 +197,7 @@ export function Sidebar({
 								"Get AI Redactions"
 							)}
 						</button>
-						<div style={{ marginBottom: "1rem" }}>
-							<div
-								style={{
-									padding: "0.5rem",
-									backgroundColor: "#f5f5f5",
-									borderRadius: "4px",
-									fontSize: "0.8rem",
-									color: "#666",
-								}}
-							>
-								<strong>Tip:</strong> Hold Alt and drag to create rectangular
-								selections
-							</div>
-						</div>
-					</div>
+											</div>
 				)}
 
 				{highlights.length > 0 && (
@@ -272,6 +259,26 @@ export function Sidebar({
 					</div>
 				</div>
 			)}
+<div style={{ marginBottom: "1rem" }}>
+				<div
+					style={{
+						padding: "0.5rem",
+						backgroundColor: "#f5f5f5",
+						borderRadius: "4px",
+						fontSize: "0.8rem",
+						color: "#666",
+					}}
+				>
+					<div>
+						<strong>Tip:</strong> Create redactions by selecting text or by
+						holding Alt and dragging the mouse.
+					</div>
+					<div>
+						All yellow highlights will be converted to secure redactions when
+						you download the redacted PDF.
+					</div>
+				</div>
+			</div>
 			{highlights.length > 0 ? (
 				<ul className="sidebar__highlights">
 					{sortedHighlights

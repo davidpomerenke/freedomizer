@@ -148,6 +148,7 @@ function findAndAddEntity(entity: any, originalText: string, entities: any[]) {
 export async function analyzePdf(
 	file: File,
 	onPageProcessed: (highlights: NewHighlight[]) => void,
+	useBackend: boolean,
 ) {
 	const fileBuffer = await file.arrayBuffer();
 	const doc = new PDFDocument(fileBuffer);
@@ -156,21 +157,42 @@ export async function analyzePdf(
 		doc.loadPage(i).toStructuredText(),
 	);
 	const text = structuredText.map((st) => st.asText());
-	const model = "Xenova/bert-base-multilingual-cased-ner-hrl";
-	const device = (navigator as Navigator & { gpu?: unknown }).gpu
-		? "webgpu"
-		: "wasm";
-	const classifier = (await pipeline("token-classification", model, {
-		device: device,
-		dtype: "fp16",
-	})) as TokenClassificationPipeline;
+	let classifier: TokenClassificationPipeline | null = null;
+	if (!useBackend) {
+		const model = "Xenova/bert-base-multilingual-cased-ner-hrl";
+		const device = (navigator as Navigator & { gpu?: unknown }).gpu
+			? "webgpu"
+			: "wasm";
+		classifier = (await pipeline("token-classification", model, {
+			device: device,
+			dtype: "fp16",
+		})) as TokenClassificationPipeline;
+	}
 
 	// Process each page individually
 	for (const [i, pageText] of text.entries()) {
 		const start = performance.now();
-		const output = (await classifier(pageText, {
-			ignore_labels: [],
-		})) as TokenClassificationOutput;
+		let output: TokenClassificationOutput;
+		if (useBackend) {
+			const response = await fetch("/api/analyze-text", {
+				method: "POST",
+				headers: {
+					"Content-Type": "text/plain",
+				},
+				body: pageText,
+			});
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
+			const data = await response.json();
+			output = data.entities;
+		} else {
+			output = (await (classifier as TokenClassificationPipeline)(pageText, {
+				ignore_labels: [],
+			})) as TokenClassificationOutput;
+		}
 		const end = performance.now();
 		console.log(`Time taken: ${end - start} milliseconds`);
 
