@@ -9,11 +9,11 @@ RUN npm run build
 
 # Final stage
 FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:python3.12-bookworm
-WORKDIR /app
+WORKDIR /app/backend
 
 # Install Python dependencies
-COPY backend/pyproject.toml backend/
-COPY backend/uv.lock backend/
+COPY backend/pyproject.toml .
+COPY backend/uv.lock .
 RUN uv sync --frozen
 
 # Install spaCy model
@@ -23,10 +23,10 @@ RUN python -m spacy download xx_ent_wiki_sm
 COPY backend/ .
 
 # Copy built frontend files
-COPY --from=frontend-builder /app/frontend/dist /app/static
+COPY --from=frontend-builder /app/frontend/dist /app/backend/static
 
 # Expose port
 EXPOSE 8000
 
 # Start the application
-CMD ["python", "main.py"]
+CMD ["uv", "run", "python", "main.py"]
