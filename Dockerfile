@@ -12,8 +12,8 @@ FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:python3.12-bookworm
 WORKDIR /app
 
 # Install Python dependencies
-COPY pyproject.toml .
-COPY uv.lock .
+COPY backend/pyproject.toml backend/
+COPY backend/uv.lock backend/
 RUN uv sync --frozen
 
 # Install spaCy model
