@@ -16,9 +16,6 @@ COPY backend/pyproject.toml .
 COPY backend/uv.lock .
 RUN uv sync --frozen
 
-# Install spaCy model
-RUN python -m spacy download xx_ent_wiki_sm
-
 # Copy backend code
 COPY backend/ .
 
