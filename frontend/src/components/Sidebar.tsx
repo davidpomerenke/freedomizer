@@ -1,7 +1,7 @@
 import type { IHighlight } from "react-pdf-highlighter";
-import { saveAnnotations, analyzePdf } from "./pdfUtils";
+import { saveAnnotations, analyzePdf } from "../pdfUtils";
 import { useState } from "react";
-import { ENTITY_TYPES } from "./entityTypes";
+import { ENTITY_TYPES } from "../entityTypes";
 
 export interface Props {
 	highlights: Array<IHighlight>;

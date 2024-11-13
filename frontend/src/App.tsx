@@ -13,8 +13,8 @@ import type {
 	ScaledPosition,
 } from "react-pdf-highlighter";
 
-import { Sidebar } from "./Sidebar";
-import { Spinner } from "./Spinner";
+import { Sidebar } from "./components/Sidebar";
+import { Spinner } from "./components/Spinner";
 
 import "./style/App.css";
 import "../node_modules/react-pdf-highlighter/dist/style.css";
