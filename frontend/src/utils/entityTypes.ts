@@ -6,7 +6,6 @@ export const ENTITY_TYPES = {
 	EMAIL: { label: "Email", color: "#bdb2ff" },
 	MONEY: { label: "Financial", color: "#ffc6ff" },
 	DATE: { label: "Date", color: "#a0c4ff" },
-	NUMBER: { label: "Number", color: "#fdffb6" },
 } as const;
 
 // Helper functions for complex patterns
@@ -253,6 +252,4 @@ export const REGEX_PATTERNS = {
 	EMAIL: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
 	MONEY: createMoneyPattern(),
 	DATE: createDatePattern(),
-	NUMBER:
-		/(?<![a-zA-Z0-9])(?:\d{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?|\d+(?:[.,]\d+)?)(?:[eE][-+]?\d+)?(?![a-zA-Z0-9])/g,
-};
+} as const;
