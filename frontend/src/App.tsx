@@ -6,146 +6,46 @@ import {
 	PdfHighlighter,
 	PdfLoader,
 } from "react-pdf-highlighter";
-import type {
-	Content,
-	IHighlight,
-	NewHighlight,
-	ScaledPosition,
-} from "react-pdf-highlighter";
+import type { IHighlight } from "react-pdf-highlighter";
 
 import { Sidebar } from "./components/Sidebar";
 import { Spinner } from "./components/Spinner";
 
 import "./style/App.css";
 import "../node_modules/react-pdf-highlighter/dist/style.css";
-
-const getNextId = () => String(Math.random()).slice(2);
-
-const parseIdFromHash = () => {
-	const hash = document.location.hash;
-	return hash.slice(hash.indexOf("highlight-") + "highlight-".length);
-};
-
-const resetHash = () => {
-	document.location.hash = "";
-};
+import { useHighlights } from "./hooks/useHighlights";
+import { resetHash, parseIdFromHash } from "./utils/highlightUtils";
 
 function App() {
 	const [url, setUrl] = useState<string | null>(null);
-	const [highlights, setHighlights] = useState<Array<IHighlight>>([]);
 	const [currentPdfFile, setCurrentPdfFile] = useState<File | null>(null);
 	const [filteredTypes, setFilteredTypes] = useState<Set<string>>(new Set());
 
-	const resetHighlights = () => {
-		setHighlights([]);
-	};
+	const {
+		highlights,
+		addHighlight,
+		updateHighlight,
+		deleteHighlight,
+		resetHighlights,
+	} = useHighlights();
 
 	const scrollViewerTo = useRef<(highlight: IHighlight) => void>(() => {});
 
 	const scrollToHighlightFromHash = useCallback(() => {
 		const highlightId = parseIdFromHash();
-		console.log("highlightId", highlightId);
 		if (!highlightId) return;
 
 		const highlight = highlights.find((h) => h.id === highlightId);
-		console.log("highlight", highlight);
 		if (highlight) {
-			setTimeout(() => {
-				scrollViewerTo.current(highlight);
-			}, 100);
+			setTimeout(() => scrollViewerTo.current(highlight), 100);
 		}
 	}, [highlights]);
 
-	// useEffect(() => {
-	// 	window.addEventListener("hashchange", scrollToHighlightFromHash, false);
-	// 	return () => {
-	// 		window.removeEventListener(
-	// 			"hashchange",
-	// 			scrollToHighlightFromHash,
-	// 			false,
-	// 		);
-	// 	};
-	// }, [scrollToHighlightFromHash]);
-
-	const addHighlight = (highlight: NewHighlight) => {
-		// PDF standard dimensions (A4)
-		const PDF_WIDTH = 595.32;
-		const PDF_HEIGHT = 841.92;
-
-		// Get current viewport dimensions
-		const { width: viewportWidth, height: viewportHeight } =
-			highlight.position.boundingRect;
-
-		// Calculate scale factors
-		const scaleX = PDF_WIDTH / viewportWidth;
-		const scaleY = PDF_HEIGHT / viewportHeight;
-
-		// Convert coordinates
-		const enrichedHighlight = {
-			...highlight,
-			position: {
-				...highlight.position,
-				boundingRect: {
-					...highlight.position.boundingRect,
-					x1: highlight.position.boundingRect.x1 * scaleX,
-					y1: highlight.position.boundingRect.y1 * scaleY,
-					x2: highlight.position.boundingRect.x2 * scaleX,
-					y2: highlight.position.boundingRect.y2 * scaleY,
-					width: PDF_WIDTH,
-					height: PDF_HEIGHT,
-				},
-				rects: highlight.position.rects.map((rect) => ({
-					...rect,
-					x1: rect.x1 * scaleX,
-					y1: rect.y1 * scaleY,
-					x2: rect.x2 * scaleX,
-					y2: rect.y2 * scaleY,
-					width: PDF_WIDTH,
-					height: PDF_HEIGHT,
-				})),
-			},
-			id: getNextId(),
-		};
-
-		setHighlights((prevHighlights) => [enrichedHighlight, ...prevHighlights]);
-	};
-
-	const updateHighlight = (
-		highlightId: string,
-		position: Partial<ScaledPosition>,
-		content: Partial<Content>,
-	) => {
-		setHighlights((prevHighlights) =>
-			prevHighlights.map((h) => {
-				const {
-					id,
-					position: originalPosition,
-					content: originalContent,
-					...rest
-				} = h;
-				return id === highlightId
-					? {
-							id,
-							position: { ...originalPosition, ...position },
-							content: { ...originalContent, ...content },
-							...rest,
-						}
-					: h;
-			}),
-		);
-	};
-
 	const handleFileUpload = (fileUrl: string, file: File) => {
 		setUrl(fileUrl);
-		setHighlights([]);
+		resetHighlights();
 		setCurrentPdfFile(file);
 	};
-
-	const deleteHighlight = useCallback((id: string) => {
-		setHighlights((prevHighlights) =>
-			prevHighlights.filter((hl) => hl.id !== id),
-		);
-	}, []);
 
 	return (
 		<div className="App" style={{ display: "flex", height: "100vh" }}>
@@ -179,7 +79,6 @@ function App() {
 									onScrollChange={resetHash}
 									scrollRef={(scrollTo) => {
 										scrollViewerTo.current = scrollTo;
-										// Only call scroll if there's a hash present
 										if (document.location.hash) {
 											scrollToHighlightFromHash();
 										}
