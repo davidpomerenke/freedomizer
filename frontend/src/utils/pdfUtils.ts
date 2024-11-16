@@ -1,11 +1,11 @@
-import { PDFDocument } from "../node_modules/mupdf/dist/mupdf.js";
+import { PDFDocument } from "../../node_modules/mupdf/dist/mupdf.js";
 import {
 	pipeline,
 	type TokenClassificationPipeline,
 	type TokenClassificationOutput,
 } from "@huggingface/transformers";
 import type { NewHighlight, Scaled } from "react-pdf-highlighter";
-import { REGEX_PATTERNS } from "./entityTypes";
+import { REGEX_PATTERNS } from "./entityTypes.js";
 
 function findRegexEntities(text: string, entities: any[]) {
 	// First find regex-based entities
