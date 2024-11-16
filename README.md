@@ -1,4 +1,4 @@
-# ⛓️‍💥 Freedomizer
+# ⬛️ SecuRedact
 
 A tool for redacting sensitive information from PDF documents using AI assistance.
 
