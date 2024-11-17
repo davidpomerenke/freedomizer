@@ -33,10 +33,13 @@ export function Sidebar({
 	onFileUpload,
 }: Props) {
 	const [isAnalyzing, setIsAnalyzing] = useState(false);
+	const [isModelLoading, setIsModelLoading] = useState(false);
+	const [modelLoadingProgress, setModelLoadingProgress] = useState(0);
 	const [processingMode, setProcessingMode] = useState<"local" | "remote">(
 		"local",
 	);
 	const [showTooltip, setShowTooltip] = useState(false);
+	const [showProgressBar, setShowProgressBar] = useState(false);
 
 	const sortedHighlights = [...highlights].sort((a, b) => {
 		// First sort by page number
@@ -74,11 +77,12 @@ export function Sidebar({
 	const handleAnalyzePdf = async () => {
 		if (!currentPdfFile) return;
 		setIsAnalyzing(true);
+		setShowProgressBar(true);
+
 		try {
 			await analyzePdf(
 				currentPdfFile,
 				(pageHighlights) => {
-					// Add IDs to the new highlights and add them
 					pageHighlights
 						.map((h) => ({
 							...h,
@@ -87,11 +91,25 @@ export function Sidebar({
 						.forEach(addHighlight);
 				},
 				processingMode === "remote",
+				(isLoading, progress) => {
+					setIsModelLoading(isLoading);
+					if (progress !== undefined && !Number.isNaN(progress)) {
+						setModelLoadingProgress(progress);
+					}
+
+					// When loading completes, start fade out
+					if (!isLoading) {
+						setTimeout(() => {
+							setShowProgressBar(false);
+						}, 1000);
+					}
+				},
 			);
 		} catch (error) {
 			console.error("Error analyzing PDF:", error);
 		} finally {
 			setIsAnalyzing(false);
+			setModelLoadingProgress(0);
 		}
 	};
 
@@ -213,15 +231,50 @@ export function Sidebar({
 							onChange={setProcessingMode}
 						/>
 
-						<Button
-							variant="primary"
-							icon="🔍"
-							onClick={handleAnalyzePdf}
-							disabled={isAnalyzing}
-							isLoading={isAnalyzing}
+						<div
+							style={{
+								display: "flex",
+								flexDirection: "column",
+								gap: "0.5rem",
+							}}
 						>
-							{isAnalyzing ? "Analyzing PDF..." : "Get AI Redactions"}
-						</Button>
+							<Button
+								variant="primary"
+								icon="🔍"
+								onClick={handleAnalyzePdf}
+								disabled={!currentPdfFile || isAnalyzing}
+								isLoading={isAnalyzing || isModelLoading}
+							>
+								{isModelLoading
+									? "Downloading AI model..."
+									: isAnalyzing
+										? "Analyzing..."
+										: "Analyze with AI"}
+							</Button>
+
+							{showProgressBar && (
+								<div
+									style={{
+										width: "100%",
+										height: "4px",
+										backgroundColor: "#e2e8f0",
+										borderRadius: "2px",
+										overflow: "hidden",
+										opacity: isModelLoading ? 1 : 0,
+										transition: "opacity 0.5s ease-out",
+									}}
+								>
+									<div
+										style={{
+											width: `${modelLoadingProgress}%`,
+											height: "100%",
+											backgroundColor: "#2563eb",
+											transition: "width 0.3s ease-out",
+										}}
+									/>
+								</div>
+							)}
+						</div>
 					</>
 				)}
 

@@ -4,6 +4,8 @@ A tool for redacting sensitive information from PDF documents using AI assistanc
 
 Everything runs completely locally in your browser.
 
+Older devices can optionally connect to a server to speed things up.
+
 ## Features
 
 - [x] [display and annotate PDFs](https://github.com/agentcooper/react-pdf-highlighter)

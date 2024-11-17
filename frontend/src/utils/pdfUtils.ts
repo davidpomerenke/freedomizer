@@ -161,6 +161,7 @@ export async function analyzePdf(
 	file: File,
 	onPageProcessed: (highlights: NewHighlight[]) => void,
 	useBackend: boolean,
+	onModelLoadingStatusChange?: (isLoading: boolean, progress?: number) => void,
 ) {
 	const fileBuffer = await file.arrayBuffer();
 	const doc = new PDFDocument(fileBuffer);
@@ -170,15 +171,27 @@ export async function analyzePdf(
 	);
 	const text = structuredText.map((st) => st.asText());
 	let classifier: TokenClassificationPipeline | null = null;
+
 	if (!useBackend) {
-		const model = "Xenova/bert-base-multilingual-cased-ner-hrl";
-		const device = (navigator as Navigator & { gpu?: unknown }).gpu
-			? "webgpu"
-			: "wasm";
-		classifier = (await pipeline("token-classification", model, {
-			device: device,
-			dtype: "fp16",
-		})) as TokenClassificationPipeline;
+		try {
+			onModelLoadingStatusChange?.(true, 0);
+			const model = "Xenova/bert-base-multilingual-cased-ner-hrl";
+			const device = (navigator as Navigator & { gpu?: unknown }).gpu
+				? "webgpu"
+				: "wasm";
+			classifier = (await pipeline("token-classification", model, {
+				device: device,
+				dtype: "fp16",
+				progress_callback: (progress: { progress: number }) => {
+					const progressValue = Number.isNaN(progress.progress)
+						? 100
+						: Math.round(progress.progress * 100) / 100;
+					onModelLoadingStatusChange?.(true, progressValue);
+				},
+			})) as TokenClassificationPipeline;
+		} finally {
+			onModelLoadingStatusChange?.(false);
+		}
 	}
 
 	// Process each page individually
