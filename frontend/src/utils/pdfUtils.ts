@@ -285,15 +285,9 @@ export async function saveAnnotations(
 			// Create redaction annotation
 			const redaction = page.createAnnotation("Redact");
 			redaction.setRect([rect.x1, rect.y1, rect.x2, rect.y2]);
-			// Create more colorful overlay (color does not work for redactions)
-			const overlay = page.createAnnotation("Square");
-			overlay.setRect([rect.x1, rect.y1, rect.x2, rect.y2]);
-			overlay.setInteriorColor([1, 0.41, 0.71]); // Pink color
-			overlay.setBorderWidth(0);
 		}
-
 		// Apply the redaction
-		page.applyRedactions(0); // since we have our own overlays, we use 0 to remove the redacted content without adding black boxes
+		page.applyRedactions(1, 1); // cf. https://mupdf.readthedocs.io/en/latest/mutool-run-js-api.html#applyRedactions
 	}
 
 	// Save the redacted PDF
