@@ -287,7 +287,7 @@ function downloadPdf(blob: Blob, originalFileName: string) {
 export async function saveAnnotations(
 	file: File,
 	highlights: Array<NewHighlight>,
-	useBackend: boolean = false,
+	useBackend = false,
 ) {
 	let pdfBlob: Blob;
 
