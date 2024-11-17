@@ -9,5 +9,7 @@ dependencies = [
     "litellm>=1.52.0",
     "pymupdf>=1.24.13",
     "python-multipart>=0.0.17",
+    "torch>=2.5.1",
+    "transformers>=4.46.2",
     "uvicorn>=0.32.0",
 ]
