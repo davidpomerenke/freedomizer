@@ -98,26 +98,22 @@ const createMoneyPattern = () => {
 
 	const patterns = [
 		// Standard currency formats (€100, 100€, EUR 100)
-		...currencies
-			.map((curr) => {
-				const escaped = curr.replace("$", "\\$");
-				return [
-					`${escaped}\\s*${numberPattern}`,
-					`${numberPattern}\\s*${escaped}`,
-				];
-			})
-			.flat(),
+		...currencies.flatMap((curr) => {
+			const escaped = curr.replace("$", "\\$");
+			return [
+				`${escaped}\\s*${numberPattern}`,
+				`${numberPattern}\\s*${escaped}`,
+			];
+		}),
 
 		// Amounts with suffixes (5M$, $5B, 5 million EUR, 14,5 mio. EUR)
-		...currencies
-			.map((curr) => {
-				const escaped = curr.replace("$", "\\$");
-				return [
-					`${escaped}\\s*\\d+(?:[.,]\\d+)?\\s*(?:${suffixPattern})`,
-					`\\d+(?:[.,]\\d+)?\\s*(?:${suffixPattern})\\s*${escaped}`,
-				];
-			})
-			.flat(),
+		...currencies.flatMap((curr) => {
+			const escaped = curr.replace("$", "\\$");
+			return [
+				`${escaped}\\s*\\d+(?:[.,]\\d+)?\\s*(?:${suffixPattern})`,
+				`\\d+(?:[.,]\\d+)?\\s*(?:${suffixPattern})\\s*${escaped}`,
+			];
+		}),
 
 		// Numbers with currency words
 		`${numberPattern}\\s*(?:dollars|euros|pounds|yen|yuan|rupees|rubles|francs|won)\\b`,

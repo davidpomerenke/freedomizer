@@ -1,20 +1,22 @@
-import { PDFDocument } from "../../node_modules/mupdf/dist/mupdf.js";
 import {
-	pipeline,
-	type TokenClassificationPipeline,
 	type TokenClassificationOutput,
+	type TokenClassificationPipeline,
+	pipeline,
 } from "@huggingface/transformers";
 import type { NewHighlight, Scaled } from "react-pdf-highlighter";
+import { PDFDocument } from "../../node_modules/mupdf/dist/mupdf.js";
 import { REGEX_PATTERNS } from "./entityTypes.js";
 
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 function findRegexEntities(text: string, entities: any[]) {
 	// First find regex-based entities
 	for (const [type, pattern] of Object.entries(REGEX_PATTERNS) as [
 		string,
 		RegExp,
 	][]) {
-		let match;
-		while ((match = pattern.exec(text)) !== null) {
+		let match: RegExpExecArray | null;
+		match = pattern.exec(text);
+		while (match !== null) {
 			entities.push({
 				text: match[0],
 				type,
@@ -22,6 +24,7 @@ function findRegexEntities(text: string, entities: any[]) {
 				startIndex: match.index,
 				endIndex: match.index + match[0].length,
 			});
+			match = pattern.exec(text);
 		}
 	}
 
@@ -59,8 +62,10 @@ function processTokenClassificationOutput(
 	output: TokenClassificationOutput,
 	originalText: string,
 ) {
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 	const entities: any[] = [];
-	let currentEntity = null;
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	let currentEntity: any | null = null;
 
 	for (const token of output) {
 		const cleanWord = token.word.replace("##", "");
@@ -95,14 +100,17 @@ function processTokenClassificationOutput(
 				// Join with spaces
 				currentEntity.words.join(" "),
 				// Smart join (combine ##-prefixed tokens without spaces)
-				currentEntity.rawWords.reduce((text, word, i) => {
-					if (i === 0) return word;
-					return text + (word.startsWith("##") ? word.slice(2) : " " + word);
-				}, ""),
+				currentEntity.rawWords.reduce(
+					(text: string, word: string, i: number) => {
+						if (i === 0) return word;
+						return text + (word.startsWith("##") ? word.slice(2) : ` ${word}`);
+					},
+					"",
+				),
 				// Progressive join (try to find longest matching substring)
-				currentEntity.words.reduce((text, word) => {
-					const combined = text + word;
-					const combinedWithSpace = text + " " + word;
+				currentEntity.words.reduce((text: string, word: string) => {
+					const combined = `${text}${word}`;
+					const combinedWithSpace = `${text} ${word}`;
 					if (originalText.includes(combined)) return combined;
 					if (originalText.includes(combinedWithSpace))
 						return combinedWithSpace;
@@ -136,6 +144,7 @@ function processTokenClassificationOutput(
 	return entities.sort((a, b) => a.startIndex - b.startIndex);
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 function findAndAddEntity(entity: any, originalText: string, entities: any[]) {
 	if (!entity.text) return;
 

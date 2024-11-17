@@ -1,9 +1,9 @@
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 import type {
+	Content,
 	IHighlight,
 	NewHighlight,
 	ScaledPosition,
-	Content,
 } from "react-pdf-highlighter";
 import { convertCoordinates } from "../utils/highlightUtils";
 

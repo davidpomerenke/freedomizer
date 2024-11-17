@@ -1,8 +1,8 @@
-import { defineConfig } from "vite";
+import fs from "node:fs";
+import { resolve } from "node:path";
+import path from "node:path";
 import react from "@vitejs/plugin-react";
-import { resolve } from "path";
-import fs from "fs";
-import path from "path";
+import { defineConfig } from "vite";
 
 function copyMupdfFiles() {
 	return {
@@ -21,14 +21,14 @@ function copyMupdfFiles() {
 				fs.mkdirSync(destDir, { recursive: true });
 			}
 
-			filesToCopy.forEach((file) => {
+			for (const file of filesToCopy) {
 				const src = path.join(srcDir, file);
 				const dest = path.join(destDir, file);
 				if (fs.existsSync(src)) {
 					fs.copyFileSync(src, dest);
 					console.log(`Copied ${file} to ${destDir}`);
 				}
-			});
+			}
 		},
 	};
 }
