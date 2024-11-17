@@ -270,41 +270,69 @@ export async function analyzePdf(
 	}
 }
 
-export async function saveAnnotations(
-	file: File,
-	highlights: Array<NewHighlight>,
-) {
-	const fileBuffer = await file.arrayBuffer();
-	const doc = new PDFDocument(fileBuffer);
-
-	// Process each highlight as a redaction
-	for (const highlight of highlights) {
-		const pageNumber = highlight.position.pageNumber - 1; // 0-based index
-		const page = doc.loadPage(pageNumber);
-		for (const rect of highlight.position.rects) {
-			// Create redaction annotation
-			const redaction = page.createAnnotation("Redact");
-			redaction.setRect([rect.x1, rect.y1, rect.x2, rect.y2]);
-		}
-		// Apply the redaction
-		page.applyRedactions(1, 1); // cf. https://mupdf.readthedocs.io/en/latest/mutool-run-js-api.html#applyRedactions
-	}
-
-	// Save the redacted PDF
-	const output = doc.saveToBuffer();
-
-	// Create blob and download
-	const blob = new Blob([output.asUint8Array()], { type: "application/pdf" });
+// Helper function to handle PDF download
+function downloadPdf(blob: Blob, originalFileName: string) {
 	const url = URL.createObjectURL(blob);
-
 	const a = document.createElement("a");
 	a.href = url;
-	a.download = file.name.replace(".pdf", "_redacted.pdf");
+	a.download = originalFileName.replace(".pdf", "_redacted.pdf");
 	document.body.appendChild(a);
 	a.click();
 
 	// Cleanup
 	URL.revokeObjectURL(url);
 	document.body.removeChild(a);
-	doc.destroy();
+}
+
+export async function saveAnnotations(
+	file: File,
+	highlights: Array<NewHighlight>,
+	useBackend: boolean = false,
+) {
+	let pdfBlob: Blob;
+
+	if (useBackend) {
+		// Use the backend endpoint
+		const formData = new FormData();
+		formData.append("file", file);
+		formData.append("annotations", JSON.stringify(highlights));
+
+		const response = await fetch("/api/save-with-redactions", {
+			method: "POST",
+			body: formData,
+		});
+
+		if (!response.ok) {
+			throw new Error(`HTTP error! status: ${response.status}`);
+		}
+
+		pdfBlob = await response.blob();
+	} else {
+		// Local processing
+		const fileBuffer = await file.arrayBuffer();
+		const doc = new PDFDocument(fileBuffer);
+
+		// Process each highlight as a redaction
+		for (const highlight of highlights) {
+			const pageNumber = highlight.position.pageNumber - 1; // 0-based index
+			const page = doc.loadPage(pageNumber);
+			for (const rect of highlight.position.rects) {
+				// Create redaction annotation
+				const redaction = page.createAnnotation("Redact");
+				redaction.setRect([rect.x1, rect.y1, rect.x2, rect.y2]);
+			}
+			// Apply the redaction
+			page.applyRedactions(1, 1);
+		}
+
+		// Save the redacted PDF
+		const output = doc.saveToBuffer();
+		pdfBlob = new Blob([output.asUint8Array()], { type: "application/pdf" });
+
+		// Cleanup
+		doc.destroy();
+	}
+
+	// Download the PDF (same for both paths)
+	downloadPdf(pdfBlob, file.name);
 }
