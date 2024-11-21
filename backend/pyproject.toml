@@ -1,7 +1,7 @@
 [project]
-name = "backend"
+name = "autoredact"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI-powered PDF redaction tool"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

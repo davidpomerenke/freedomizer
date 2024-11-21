@@ -1,4 +1,4 @@
-# ⛓️‍💥 Freedomizer
+# ⛓️‍💥 AutoRedact
 
 A tool for redacting sensitive information from PDF documents using AI assistance.
 
@@ -22,8 +22,8 @@ AZURE_OPENAI_API_VERSION=your_version
 2. Build and run with Docker:
 
 ```bash
-docker build -t freedomizer .
-docker run -p 8000:8000 --env-file .env --rm freedomizer
+docker build -t autoredact .
+docker run -p 8000:8000 --env-file .env --rm autoredact
 ```
 
 Or run locally:
