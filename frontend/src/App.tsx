@@ -255,6 +255,23 @@ export function App() {
 
   return (
     <div className="App" style={{ display: "flex", height: "100vh" }}>
+      <div 
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: "#fff3cd",
+          color: "#856404",
+          padding: "12px",
+          textAlign: "center",
+          zIndex: 1000,
+          borderBottom: "1px solid #ffeeba",
+          fontSize: "14px"
+        }}
+      >
+        ⚠️ Development Notice: This software is in early development and not yet ready for production use. Features may be incomplete or unstable.
+      </div>
       <Sidebar
         highlights={highlights}
         resetHighlights={resetHighlights}

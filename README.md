@@ -2,6 +2,8 @@
 
 A tool for redacting sensitive information from PDF documents using AI assistance.
 
+> ⚠️ **Development Notice**: This software is currently in early development and not yet ready for production use. Features may be incomplete or unstable. Use at your own risk.
+
 ## Features
 
 - Upload and view PDF documents
