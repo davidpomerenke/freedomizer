@@ -182,11 +182,21 @@ export async function analyzePdf(
 			classifier = (await pipeline("token-classification", model, {
 				device: device,
 				dtype: "fp16",
-				progress_callback: (progress: { progress: number }) => {
-					const progressValue = Number.isNaN(progress.progress)
-						? 100
-						: Math.round(progress.progress * 100) / 100;
-					onModelLoadingStatusChange?.(true, progressValue);
+				progress_callback: (progressInfo: any) => {
+					// Handle both old and new progress info formats
+					const progressValue = progressInfo.progress !== undefined
+						? progressInfo.progress
+						: progressInfo.percentage !== undefined
+							? progressInfo.percentage / 100
+							: undefined;
+
+					// Only update if we have a valid progress value
+					if (progressValue !== undefined) {
+						const normalizedProgress = Number.isNaN(progressValue)
+							? 100
+							: Math.round(progressValue * 100) / 100;
+						onModelLoadingStatusChange?.(true, normalizedProgress);
+					}
 				},
 			})) as TokenClassificationPipeline;
 		} finally {
