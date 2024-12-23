@@ -2,6 +2,8 @@
 
 A tool for redacting sensitive information from PDF documents using AI assistance.
 
+> ⚠️ **DISCLAIMER**: This software is currently in development and not yet ready for production use. Use at your own risk and always verify redactions manually.
+
 Everything runs completely locally in your browser.
 
 Older devices can optionally connect to a server to speed things up.

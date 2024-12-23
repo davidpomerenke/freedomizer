@@ -72,6 +72,22 @@ function App() {
 					position: "relative",
 				}}
 			>
+				<div 
+					style={{
+						position: "absolute",
+						top: 0,
+						left: 0,
+						right: 0,
+						padding: "10px",
+						background: "#fff3cd",
+						color: "#664d03",
+						border: "1px solid #ffecb5",
+						zIndex: 1000,
+						textAlign: "center",
+					}}
+				>
+					⚠️ This software is in development and not yet ready for production use. Always verify redactions manually.
+				</div>
 				{url ? (
 					<PdfLoader url={url} beforeLoad={<Spinner />}>
 						{(pdfDocument) => {
